@@ -1,1 +1,180 @@
 # llm_engine.py: Ollama async orchestration & Tool Calling
+import asyncio
+import re
+from ollama import AsyncClient
+from typing import List, Dict, Any, Callable
+
+# ---------------------------------------------------------
+# 1. Define Local Tools (Plugins)
+# ---------------------------------------------------------
+# Ollama natively parses type hints and docstrings into tool schemas!
+def get_weather(location: str) -> str:
+    """Get the current weather conditions for a specific location."""
+    print(f"🔧 [Tool Execution] Fetching weather for {location}...")
+    # In a real app, you would call OpenWeatherAPI here
+    return f"The weather in {location} is currently 72°F and sunny."
+
+def toggle_smart_lights(room: str, state: str) -> str:
+    """Turn the smart lights on or off in a specific room. State should be 'on' or 'off'."""
+    print(f"🔧 [Tool Execution] Turning {state} the lights in the {room}...")
+    # In a real app, you would call HomeAssistant REST API here
+    return f"The {room} lights have been turned {state}."
+
+# ---------------------------------------------------------
+# 2. LLM Orchestrator
+# ---------------------------------------------------------
+class LLMEngine:
+    def __init__(self, model_name="llama3.1"): # qwen2.5 is also excellent for local tools
+        self.client = AsyncClient()
+        self.model = model_name
+        self.system_prompt = {
+            "role": "system",
+            "content": (
+                "You are Jarvis, a concise, highly capable AI assistant. "
+                "Keep responses conversational, brief, and to the point. "
+                "Do not use emojis or markdown formatting, as your output is being spoken aloud."
+            )
+        }
+        # Memory Buffer
+        self.messages = [self.system_prompt]
+        
+        # Available tools for the LLM
+        self.tools = [get_weather, toggle_smart_lights]
+        
+        # Async Queues (Connected in main.py)
+        self.tts_queue = asyncio.Queue()
+        
+    def _add_to_memory(self, role: str, content: str = "", tool_calls: list = None):
+        """Append messages to the conversation buffer."""
+        msg = {"role": role, "content": content}
+        if tool_calls:
+            msg["tool_calls"] = tool_calls
+        self.messages.append(msg)
+        
+        # Memory pruning (keep last 20 messages to prevent context overflow)
+        if len(self.messages) > 20:
+            self.messages = [self.system_prompt] + self.messages[-19:]
+
+    async def _execute_tool(self, tool_call) -> str:
+        """Dynamically matches the tool call from the LLM to our Python functions."""
+        func_name = tool_call.function.name
+        kwargs = tool_call.function.arguments
+        
+        # Match function name to actual Python function
+        for tool in self.tools:
+            if tool.__name__ == func_name:
+                # Run the function in a non-blocking thread just in case it makes HTTP requests
+                result = await asyncio.to_thread(tool, **kwargs)
+                return str(result)
+        return "Tool not found."
+
+    async def process_text_queue(self, stt_text_queue: asyncio.Queue, barge_in_event: asyncio.Event):
+        """Consumes text from STT, queries the LLM, and streams sentences to TTS."""
+        print("🧠 LLM Engine ready. Waiting for text...")
+        
+        while True:
+            user_text = await stt_text_queue.get()
+            self._add_to_memory("user", user_text)
+            
+            # Reset barge-in state before we start generating
+            barge_in_event.clear()
+            
+            await self._generate_response(barge_in_event)
+
+    async def _generate_response(self, barge_in_event: asyncio.Event):
+        """Handles the streaming API call and Tool execution."""
+        
+        print("🧠 Thinking...")
+        
+        # 1. Call Ollama with Streaming and Tools enabled
+        response_stream = await self.client.chat(
+            model=self.model,
+            messages=self.messages,
+            tools=self.tools,
+            stream=True
+        )
+
+        current_sentence = ""
+        full_response = ""
+        tool_calls_buffer = []
+        
+        # 2. Iterate over the stream
+        async for chunk in response_stream:
+            # --- INTERRUPT CHECK ---
+            if barge_in_event.is_set():
+                print("🛑 [LLM] Barge-in detected! Halting generation.")
+                break # Exit the stream immediately!
+
+            message = chunk.message
+            
+            # --- TOOL CALL HANDLING ---
+            if message.tool_calls:
+                tool_calls_buffer.extend(message.tool_calls)
+                continue # Skip processing text while gathering tool arguments
+                
+            # --- TEXT STREAMING & SENTENCE CHUNKING ---
+            if message.content:
+                text_chunk = message.content
+                current_sentence += text_chunk
+                full_response += text_chunk
+                
+                # If we hit punctuation, flush the sentence to the TTS queue!
+                # This drops TTS latency from ~5 seconds down to ~0.5 seconds.
+                if re.search(r'[.!?]\s', current_sentence):
+                    clean_sentence = current_sentence.strip()
+                    await self.tts_queue.put(clean_sentence)
+                    current_sentence = ""
+
+        # Flush any remaining text in the buffer
+        if current_sentence.strip() and not barge_in_event.is_set():
+            await self.tts_queue.put(current_sentence.strip())
+
+        # 3. Post-Generation Processing
+        if tool_calls_buffer and not barge_in_event.is_set():
+            # Save the assistant's decision to call a tool to memory
+            self._add_to_memory("assistant", "", tool_calls=tool_calls_buffer)
+            
+            for tool_call in tool_calls_buffer:
+                tool_result = await self._execute_tool(tool_call)
+                
+                # Append tool result to memory
+                self.messages.append({
+                    "role": "tool",
+                    "name": tool_call.function.name,
+                    "content": tool_result
+                })
+                
+            # The LLM now has the tool data. We must trigger it again to synthesize a spoken answer.
+            await self._generate_response(barge_in_event)
+            
+        elif full_response:
+            # Standard conversational response
+            self._add_to_memory("assistant", full_response)
+            
+            # Send a special signal to the TTS engine that the LLM is done thinking
+            await self.tts_queue.put("<END_OF_TURN>")
+
+
+# --- Integration Example ---
+async def main():
+    stt_queue = asyncio.Queue()
+    barge_in_event = asyncio.Event()
+    
+    llm = LLMEngine()
+    
+    # Start LLM background task
+    asyncio.create_task(llm.process_text_queue(stt_queue, barge_in_event))
+    
+    # Mock STT input
+    await stt_queue.put("Turn off the kitchen lights, and then tell me the weather in Tokyo.")
+    
+    # Mock TTS consumer
+    while True:
+        sentence = await llm.tts_queue.get()
+        if sentence == "<END_OF_TURN>":
+            print("🏁 LLM finished its turn.")
+            break
+        print(f"➡️ Sent to TTS: {sentence}")
+
+if __name__ == "__main__":
+    asyncio.run(main())

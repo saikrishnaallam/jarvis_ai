@@ -1,1 +1,10 @@
 # requirements.txt: All dependencies
+sounddevice==0.4.6
+numpy
+silero-vad
+torch
+faster-whisper>=1.0.0
+ollama>=0.3.0
+kokoro>=0.3.4
+soundfile
+misaka
