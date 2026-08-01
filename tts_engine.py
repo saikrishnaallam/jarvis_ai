@@ -56,6 +56,7 @@ class TTSEngine:
 
             # 2. Synthesize audio in a background thread to prevent blocking event loop
             try:
+                print(f"🔊 [TTS] Synthesizing: \"{text}\"")
                 audio_array = await asyncio.to_thread(self._synthesize_sync, text)
                 
                 # If barge-in happened *during* synthesis, throw the audio away
@@ -72,38 +73,51 @@ class TTSEngine:
         """Consumes audio arrays and plays them via sounddevice OutputStream."""
         print("🔊 Audio Playback worker ready.")
         
-        # We use an explicit event loop reference for the sounddevice callback
-        loop = asyncio.get_running_loop()
+        current_chunk = None
+        current_index = 0
         
         def _callback(outdata, frames, time, status):
             """This callback runs in a separate C-thread managed by PortAudio."""
+            nonlocal current_chunk, current_index
             if status:
                 print(status)
                 
             # If barge-in is triggered, fill buffer with zeros (silence) and abort
             if barge_in_event.is_set():
                 outdata.fill(0)
+                current_chunk = None
+                current_index = 0
                 return
 
-            try:
-                # We use get_nowait() because we CANNOT block inside the audio callback
-                chunk = self.audio_playback_queue.get_nowait()
+            outdata.fill(0)
+            
+            # Keep filling the output buffer until we satisfy the requested 'frames'
+            filled = 0
+            while filled < frames:
+                if current_chunk is None:
+                    try:
+                        current_chunk = self.audio_playback_queue.get_nowait()
+                        current_index = 0
+                        if current_chunk is None:
+                            # End of turn signal - play silence
+                            break
+                    except asyncio.QueueEmpty:
+                        break
                 
-                if chunk is None:
-                    # End of turn signal - play silence
-                    outdata.fill(0)
-                    return
-                
-                # Pad or slice the chunk to fit the output buffer (simplified for readability)
-                # In a robust production app, you'd use a ring buffer here.
-                length = min(len(chunk), frames)
-                outdata[:length, 0] = chunk[:length]
-                if length < frames:
-                    outdata[length:, 0] = 0
+                if current_chunk is not None:
+                    chunk_len = len(current_chunk)
+                    remaining = chunk_len - current_index
+                    needed = frames - filled
+                    to_copy = min(remaining, needed)
                     
-            except asyncio.QueueEmpty:
-                # Buffer underrun (TTS is slower than playback) -> play silence
-                outdata.fill(0)
+                    outdata[filled:filled+to_copy, 0] = current_chunk[current_index : current_index+to_copy]
+                    
+                    current_index += to_copy
+                    filled += to_copy
+                    
+                    if current_index >= chunk_len:
+                        current_chunk = None
+                        current_index = 0
 
         # Open a persistent output stream
         with sd.OutputStream(samplerate=self.sample_rate,
@@ -115,10 +129,14 @@ class TTSEngine:
             while True:
                 # 1. Check for barge-in
                 if barge_in_event.is_set():
+                    current_chunk = None
+                    current_index = 0
                     # Empty the playback queue instantly
                     while not self.audio_playback_queue.empty():
-                        self.audio_playback_queue.get_nowait()
-                        self.audio_playback_queue.task_done()
+                        try:
+                            self.audio_playback_queue.get_nowait()
+                        except asyncio.QueueEmpty:
+                            break
                         
                 # 2. Keep the stream alive
                 await asyncio.sleep(0.1)
