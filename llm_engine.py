@@ -127,13 +127,16 @@ class LLMEngine:
                 full_response += text_chunk
                 
                 # If we hit punctuation, flush the sentence to the TTS queue!
-                # This drops TTS latency from ~5 seconds down to ~0.5 seconds.
-                if re.search(r'[.!?]\s', current_sentence):
-                    clean_sentence = current_sentence.strip()
+                # We use a negative lookbehind (?<!\d) to prevent splitting on numbers (like "5. ")
+                # We also split the string exactly at the punctuation index to prevent cutting words in half!
+                match = re.search(r'(?<!\d)[.!?]\s', current_sentence)
+                if match:
+                    split_idx = match.end()
+                    clean_sentence = current_sentence[:split_idx].strip()
                     # Skip raw JSON blocks to prevent them from being spoken aloud
                     if not (clean_sentence.startswith("{") and clean_sentence.endswith("}")):
                         await self.tts_queue.put(clean_sentence)
-                    current_sentence = ""
+                    current_sentence = current_sentence[split_idx:]
 
         # Flush any remaining text in the buffer
         if current_sentence.strip() and not barge_in_event.is_set():

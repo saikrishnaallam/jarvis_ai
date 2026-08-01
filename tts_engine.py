@@ -11,8 +11,10 @@ class TTSEngine:
         self.sample_rate = sample_rate
         
         print("🔊 Loading Kokoro TTS pipeline...")
-        # 'a' = American English. You can load specific voice weights like 'af_heart'
-        self.pipeline = KPipeline(lang_code='a', device='cpu') 
+        # Auto-detect hardware accelerator (MPS/Apple Silicon, CUDA, or CPU)
+        device = 'cuda' if torch.cuda.is_available() else ('mps' if torch.backends.mps.is_available() else 'cpu')
+        print(f"🔊 Running Kokoro TTS on device: {device}")
+        self.pipeline = KPipeline(lang_code='a', device=device) 
         self.voice = 'af_heart' # Default high-quality female voice
         
         # Internal async queue to buffer synthesized audio chunks
