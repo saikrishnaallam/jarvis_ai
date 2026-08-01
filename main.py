@@ -43,7 +43,7 @@ async def main():
         # 3. Launch all worker loops concurrently
         await asyncio.gather(
             # Input pipeline
-            audio_engine.vad_processing_loop(),
+            audio_engine.vad_processing_loop(tts_engine),
             stt_engine.process_speech_queue(audio_engine.speech_buffer_queue),
             
             # Orchestration

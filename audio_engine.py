@@ -30,7 +30,7 @@ class AudioPipeline:
         audio_chunk = np.squeeze(indata.copy())
         self.loop.call_soon_threadsafe(self.raw_audio_queue.put_nowait, audio_chunk)
 
-    async def vad_processing_loop(self):
+    async def vad_processing_loop(self, tts_engine=None):
         """Consumes raw audio, runs VAD, and endpoints speech."""
         current_speech_buffer = []
         silence_frames = 0
@@ -45,6 +45,14 @@ class AudioPipeline:
                             callback=self._audio_callback):
             while True:
                 chunk = await self.raw_audio_queue.get()
+                
+                # If assistant is speaking, discard incoming audio to prevent feedback loop
+                if tts_engine and tts_engine.is_playing:
+                    self.is_user_speaking = False
+                    current_speech_buffer = []
+                    silence_frames = 0
+                    self.barge_in_event.clear()
+                    continue
                 
                 # Convert NumPy array to Torch tensor for Silero
                 tensor_chunk = torch.from_numpy(chunk)

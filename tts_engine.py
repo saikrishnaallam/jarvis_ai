@@ -87,12 +87,14 @@ class TTSEngine:
                 outdata.fill(0)
                 current_chunk = None
                 current_index = 0
+                self.is_playing = False
                 return
 
             outdata.fill(0)
             
             # Keep filling the output buffer until we satisfy the requested 'frames'
             filled = 0
+            has_voice = False
             while filled < frames:
                 if current_chunk is None:
                     try:
@@ -105,6 +107,7 @@ class TTSEngine:
                         break
                 
                 if current_chunk is not None:
+                    has_voice = True
                     chunk_len = len(current_chunk)
                     remaining = chunk_len - current_index
                     needed = frames - filled
@@ -118,6 +121,8 @@ class TTSEngine:
                     if current_index >= chunk_len:
                         current_chunk = None
                         current_index = 0
+            
+            self.is_playing = has_voice
 
         # Open a persistent output stream
         with sd.OutputStream(samplerate=self.sample_rate,
@@ -129,6 +134,7 @@ class TTSEngine:
             while True:
                 # 1. Check for barge-in
                 if barge_in_event.is_set():
+                    self.is_playing = False
                     current_chunk = None
                     current_index = 0
                     # Empty the playback queue instantly
