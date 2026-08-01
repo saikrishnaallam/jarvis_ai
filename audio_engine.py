@@ -38,6 +38,7 @@ class AudioPipeline:
         
         print("🎙️ Listening...")
         
+        last_playback_time = 0
         with sd.InputStream(samplerate=self.sample_rate, 
                             channels=1, 
                             dtype='float32', 
@@ -46,8 +47,12 @@ class AudioPipeline:
             while True:
                 chunk = await self.raw_audio_queue.get()
                 
-                # If assistant is speaking, discard incoming audio to prevent feedback loop
+                current_time = self.loop.time()
                 if tts_engine and tts_engine.is_playing:
+                    last_playback_time = current_time
+                
+                # If assistant is speaking, or we are in the 1.0s echo cooldown period, discard incoming audio
+                if tts_engine and (tts_engine.is_playing or (current_time - last_playback_time < 1.0)):
                     self.is_user_speaking = False
                     current_speech_buffer = []
                     silence_frames = 0

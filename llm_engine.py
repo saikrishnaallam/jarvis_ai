@@ -20,6 +20,14 @@ def toggle_smart_lights(room: str, state: str) -> str:
     # In a real app, you would call HomeAssistant REST API here
     return f"The {room} lights have been turned {state}."
 
+def get_current_time() -> str:
+    """Get the current local time."""
+    import datetime
+    now = datetime.datetime.now()
+    time_str = now.strftime("%I:%M %p")
+    print(f"🔧 [Tool Execution] Getting current time: {time_str}...")
+    return f"The current time is {time_str}."
+
 # ---------------------------------------------------------
 # 2. LLM Orchestrator
 # ---------------------------------------------------------
@@ -39,7 +47,7 @@ class LLMEngine:
         self.messages = [self.system_prompt]
         
         # Available tools for the LLM
-        self.tools = [get_weather, toggle_smart_lights]
+        self.tools = [get_weather, toggle_smart_lights, get_current_time]
         
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
@@ -122,12 +130,16 @@ class LLMEngine:
                 # This drops TTS latency from ~5 seconds down to ~0.5 seconds.
                 if re.search(r'[.!?]\s', current_sentence):
                     clean_sentence = current_sentence.strip()
-                    await self.tts_queue.put(clean_sentence)
+                    # Skip raw JSON blocks to prevent them from being spoken aloud
+                    if not (clean_sentence.startswith("{") and clean_sentence.endswith("}")):
+                        await self.tts_queue.put(clean_sentence)
                     current_sentence = ""
 
         # Flush any remaining text in the buffer
         if current_sentence.strip() and not barge_in_event.is_set():
-            await self.tts_queue.put(current_sentence.strip())
+            clean_sentence = current_sentence.strip()
+            if not (clean_sentence.startswith("{") and clean_sentence.endswith("}")):
+                await self.tts_queue.put(clean_sentence)
 
         # 3. Post-Generation Processing
         if tool_calls_buffer and not barge_in_event.is_set():
