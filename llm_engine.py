@@ -24,7 +24,7 @@ def toggle_smart_lights(room: str, state: str) -> str:
 # 2. LLM Orchestrator
 # ---------------------------------------------------------
 class LLMEngine:
-    def __init__(self, model_name="llama3.1"): # qwen2.5 is also excellent for local tools
+    def __init__(self, model_name="llama3"): # qwen2.5 is also excellent for local tools
         self.client = AsyncClient()
         self.model = model_name
         self.system_prompt = {
