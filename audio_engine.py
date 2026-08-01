@@ -6,7 +6,7 @@ from silero_vad import load_silero_vad, get_speech_timestamps
 import torch
 
 class AudioPipeline:
-    def __init__(self, sample_rate=16000, chunk_duration_ms=30):
+    def __init__(self, sample_rate=16000, chunk_duration_ms=32):
         self.sample_rate = sample_rate
         self.chunk_size = int(sample_rate * (chunk_duration_ms / 1000))
         
