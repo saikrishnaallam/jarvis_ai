@@ -64,6 +64,15 @@ graph TD
 
 ## Requirements & Setup
 
+### Disk Space Requirements
+To run this voice assistant fully locally, you will need approximately **4.5 GB to 7.2 GB** of free disk space:
+* **Python Environment (Packages, PyTorch, Spacy)**: ~2.0 GB
+* **Whisper Speech-to-Text Model (`tiny.en`)**: ~75 MB (cached automatically on first run)
+* **Kokoro Text-to-Speech Model (`Kokoro-82M`)**: ~340 MB (cached automatically on first run)
+* **Ollama LLM Model**:
+  * `llama3.2` (3B, Default): **~2.0 GB**
+  * `llama3.1` (8B, Optional): **~4.7 GB**
+
 ### Local Installation (macOS & Linux)
 Ensure you have the PortAudio and system dependencies installed:
 - **macOS (Homebrew)**:
