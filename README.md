@@ -32,8 +32,10 @@ graph TD
 2. **Reverberation/Echo Guard**: Implemented a `1.0-second cooldown` after speech playback ends to allow room echo to clear before the microphone starts listening again.
 3. **Mid-Word Audio Fragmentation Fix**: Resolved a regex sentence-boundary bug where numeric lists (e.g. `"5. "`) split words in half (e.g., `"5. Impro"` and `"ving people's..."`). The stream parser now uses a negative lookbehind `(?<!\d)` to ignore numbers, and splits precisely at the end of punctuation.
 4. **Latency Reductions**:
+   - **VAD Endpointing**: Reduced silence window from `1.2s` to `0.8s` so the assistant starts generating responses 400ms faster.
    - **STT Model**: Downsized from `base` to `tiny.en` to drop transcription latency from 1.5s to **~0.3s**.
    - **TTS Accelerator**: Configured Kokoro to run on Apple Silicon GPU (`mps` - Metal Performance Shaders) dropping audio generation latency to **~0.4s**.
+5. **Interactive Keyboard Barge-In**: Running in a console environment means software Acoustic Echo Cancellation is not available. To allow natural conversation, we implemented a background keyboard listener: press `Enter` in the terminal to instantly interrupt Jarvis, stop speech synthesis, and start speaking immediately.
 
 ---
 

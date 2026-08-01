@@ -22,6 +22,15 @@ async def shutdown(loop, signal=None):
     await asyncio.gather(*tasks, return_exceptions=True)
     loop.stop()
 
+async def keyboard_interrupt_listener(barge_in_event: asyncio.Event):
+    """Listens for the user hitting 'Enter' in the console to trigger an instant barge-in."""
+    loop = asyncio.get_running_loop()
+    while True:
+        # Run stdin reading in an executor thread so it doesn't block the main event loop
+        await loop.run_in_executor(None, sys.stdin.readline)
+        print("\n⌨️ [Console] Interruption triggered by user!")
+        barge_in_event.set()
+
 async def main():
     print("🚀 Initializing Local Voice Assistant...")
 
@@ -52,6 +61,9 @@ async def main():
             # Output pipeline
             tts_engine.synthesis_worker(llm_engine.tts_queue, barge_in_event),
             tts_engine.playback_worker(barge_in_event),
+            
+            # Keyboard interruption
+            keyboard_interrupt_listener(barge_in_event),
         )
     except asyncio.CancelledError:
         pass # Expected on shutdown
