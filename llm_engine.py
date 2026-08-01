@@ -32,7 +32,7 @@ def get_current_time() -> str:
 # 2. LLM Orchestrator
 # ---------------------------------------------------------
 class LLMEngine:
-    def __init__(self, model_name="llama3.1"): # qwen2.5 is also excellent for local tools
+    def __init__(self, model_name="llama3.2"): # qwen2.5 is also excellent for local tools
         self.client = AsyncClient()
         self.model = model_name
         self.system_prompt = {
