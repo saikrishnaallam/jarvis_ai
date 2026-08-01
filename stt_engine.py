@@ -33,7 +33,7 @@ class STTEngine:
         segments, info = self.model.transcribe(
             audio=audio_array,
             beam_size=1,            # Beam size 1 is faster for real-time (greedy decoding)
-            vad_filter=False,       # We already did VAD in Phase 1!
+            vad_filter=True,        # Use second-pass VAD to prevent hallucinations on noise/breaths
             language="en",          # Hardcode language to save detection time (optional)
             condition_on_previous_text=False # Prevent hallucinations on short clips
         )

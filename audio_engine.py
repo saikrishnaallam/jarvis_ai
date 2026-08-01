@@ -34,7 +34,7 @@ class AudioPipeline:
         """Consumes raw audio, runs VAD, and endpoints speech."""
         current_speech_buffer = []
         silence_frames = 0
-        max_silence_frames = int(0.5 / (self.chunk_size / self.sample_rate)) # 500ms silence threshold
+        max_silence_frames = int(1.2 / (self.chunk_size / self.sample_rate)) # 1.2s silence threshold
         
         print("🎙️ Listening...")
         
