@@ -27,7 +27,6 @@ async def main():
 
     # 1. Global State & Queues
     barge_in_event = asyncio.Event()
-    stt_text_queue = asyncio.Queue()
     
     # 2. Instantiate all modules
     audio_engine = AudioPipeline()          # Connects Mic -> VAD (creates its own speech queue)
@@ -48,7 +47,7 @@ async def main():
             stt_engine.process_speech_queue(audio_engine.speech_buffer_queue),
             
             # Orchestration
-            llm_engine.process_text_queue(stt_text_queue, barge_in_event),
+            llm_engine.process_text_queue(stt_engine.text_queue, barge_in_event),
             
             # Output pipeline
             tts_engine.synthesis_worker(llm_engine.tts_queue, barge_in_event),
