@@ -1,6 +1,21 @@
 # Jarvis Local Voice AI Assistant
 
+![Project Status](https://img.shields.io/badge/Status-Active-brightgreen)
+![Python Version](https://img.shields.io/badge/Python-3.11-blue)
+![STT Engine](https://img.shields.io/badge/STT-Whisper%20(tiny.en)-blueviolet)
+![LLM Model](https://img.shields.io/badge/LLM-Ollama%20(llama3.1%20%2F%20llama3.2)-orange)
+![TTS Engine](https://img.shields.io/badge/TTS-Kokoro%20(af__heart)-ff69b4)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 A low-latency, fully local voice assistant featuring Voice Activity Detection (VAD), Speech-to-Text (STT), Language Model (LLM) orchestration with Tool Calling, and Text-to-Speech (TTS) playback.
+
+## Project Status
+
+- **Development Status**: **Active / Stable** 🟢
+- **Platform Support**: Optimized for **macOS** (with Apple Silicon Metal Performance Shaders / GPU acceleration) and **Linux**.
+- **Execution Modes**: Supports native macOS/Linux execution or containerized deployment via Docker.
+
+---
 
 ## Features
 
