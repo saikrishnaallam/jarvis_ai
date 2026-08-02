@@ -2,6 +2,7 @@
 import asyncio
 import signal
 import sys
+import threading
 
 # Import our custom modules
 from audio_engine import AudioPipeline
@@ -10,27 +11,32 @@ from llm_engine import LLMEngine
 from tts_engine import TTSEngine
 from ui_engine import UIEngine
 
+# Global references for signal handling
+global_loop = None
 global_ui_engine = None
 
-async def shutdown(loop, signal=None):
-    """Gracefully cleans up tasks on exit (Ctrl+C)."""
-    global global_ui_engine
-    if signal:
-        print(f"\nReceived exit signal {signal.name}...")
-    print("Shutting down Voice AI Engine...")
+def handle_sigint(signum, frame):
+    """Triggered by Ctrl+C or kill signals on the main thread."""
+    global global_loop, global_ui_engine
+    print("\nReceived exit signal. Shutting down Voice AI Engine...")
     
+    # 1. Close Tkinter UI on main thread
     if global_ui_engine:
         try:
             global_ui_engine.close()
         except Exception:
             pass
             
-    tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
-    [task.cancel() for task in tasks]
-    
-    print(f"Cancelling {len(tasks)} outstanding tasks")
-    await asyncio.gather(*tasks, return_exceptions=True)
-    loop.stop()
+    # 2. Cancel asyncio tasks thread-safely
+    if global_loop and global_loop.is_running():
+        global_loop.call_soon_threadsafe(cancel_all_tasks, global_loop)
+
+def cancel_all_tasks(loop):
+    """Cancels all currently scheduled tasks in the loop."""
+    tasks = [t for t in asyncio.all_tasks(loop) if t is not asyncio.current_task()]
+    print(f"Cancelling {len(tasks)} outstanding background tasks...")
+    for task in tasks:
+        task.cancel()
 
 async def keyboard_interrupt_listener(barge_in_event: asyncio.Event):
     """Listens for the user hitting 'Enter' in the console to trigger an instant barge-in."""
@@ -41,21 +47,16 @@ async def keyboard_interrupt_listener(barge_in_event: asyncio.Event):
         print("\n⌨️ [Console] Interruption triggered by user!")
         barge_in_event.set()
 
-async def main():
-    global global_ui_engine
+async def main(ui_engine):
     print("🚀 Initializing Local Voice Assistant...")
 
     # 1. Global State & Queues
     barge_in_event = asyncio.Event()
     
     # 2. Instantiate all modules
-    ui_engine = UIEngine()
-    global_ui_engine = ui_engine
-    ui_engine.start()
-    
     audio_engine = AudioPipeline()          # Connects Mic -> VAD (creates its own speech queue)
     stt_engine = STTEngine()                # Transcribes endpointed speech
-    llm_engine = LLMEngine()                # Ollama Llama-3.1 + Tools (creates tts_text_queue)
+    llm_engine = LLMEngine()                # Ollama chat orchestrator with custom tools
     tts_engine = TTSEngine()                # Kokoro TTS + Speaker playback
     
     # Wait a moment for models to load into memory
@@ -83,19 +84,41 @@ async def main():
     except asyncio.CancelledError:
         pass # Expected on shutdown
 
-if __name__ == "__main__":
-    loop = asyncio.new_event_loop()
+def run_asyncio_thread(loop, ui_engine):
+    """Runs the asyncio event loop inside a daemon thread."""
     asyncio.set_event_loop(loop)
-    
-    # Setup graceful shutdown handlers
-    signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
-    for s in signals:
-        loop.add_signal_handler(
-            s, lambda s=s: asyncio.create_task(shutdown(loop, signal=s))
-        )
-        
     try:
-        loop.run_until_complete(main())
+        loop.run_until_complete(main(ui_engine))
+    except Exception as e:
+        print(f"[Async Thread Error] {e}")
+    finally:
+        loop.close()
+        print("Asynchronous background thread stopped.")
+
+if __name__ == "__main__":
+    # 1. Instantiate the UI on the main thread (Cocoa requirement on macOS)
+    ui_engine = UIEngine()
+    global_ui_engine = ui_engine
+    
+    # 2. Create the background asyncio event loop
+    loop = asyncio.new_event_loop()
+    global_loop = loop
+    
+    # 3. Setup signal handlers on the main thread
+    signal.signal(signal.SIGINT, handle_sigint)
+    signal.signal(signal.SIGTERM, handle_sigint)
+    
+    # 4. Start the background thread for the voice pipeline
+    async_thread = threading.Thread(
+        target=lambda: run_asyncio_thread(loop, ui_engine),
+        daemon=True
+    )
+    async_thread.start()
+    
+    # 5. Start the Tkinter main loop on the main thread (blocking)
+    try:
+        ui_engine.start()
+    except KeyboardInterrupt:
+        handle_sigint(None, None)
     finally:
         print("Successfully gracefully shutdown.")
-        loop.close()

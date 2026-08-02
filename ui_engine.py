@@ -1,26 +1,15 @@
 # ui_engine.py: Floating Siri-like circular desktop orb for Jarvis
 import tkinter as tk
-import threading
 import math
 import time
 
-class UIEngine(threading.Thread):
+class UIEngine:
     def __init__(self):
-        super().__init__()
-        self.daemon = True
         self.state = "IDLE"      # IDLE, LISTENING, THINKING, SPEAKING
         self.amplitude = 0.0
         self.running = True
-        self.root = None
-        self.canvas = None
         
-    def set_state(self, state: str):
-        self.state = state
-        
-    def set_amplitude(self, amplitude: float):
-        self.amplitude = amplitude
-
-    def run(self):
+        # Instantiate Tkinter on the main thread
         self.root = tk.Tk()
         self.root.title("Jarvis UI")
         
@@ -51,7 +40,15 @@ class UIEngine(threading.Thread):
         self.tick = 0
         self.animate()
         
+    def start(self):
+        """Starts the Tkinter main loop (must be called on the main thread)."""
         self.root.mainloop()
+
+    def set_state(self, state: str):
+        self.state = state
+        
+    def set_amplitude(self, amplitude: float):
+        self.amplitude = amplitude
 
     def animate(self):
         if not self.running:
@@ -60,7 +57,6 @@ class UIEngine(threading.Thread):
         self.tick += 1
         try:
             self.canvas.delete("all")
-            
             cx, cy = self.width / 2, self.height / 2
             
             if self.state == "IDLE":
@@ -103,7 +99,6 @@ class UIEngine(threading.Thread):
                 
             elif self.state == "SPEAKING":
                 # Speaking State: Green/teal orb that dances to the real-time speech amplitude!
-                # Amplitude values are typically 0.0 to 1.0
                 amp_scale = min(self.amplitude, 1.0)
                 pulse = 28 + (amp_scale * 45) + 3 * math.sin(self.tick * 0.1)
                 
