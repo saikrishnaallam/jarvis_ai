@@ -8,13 +8,23 @@ from audio_engine import AudioPipeline
 from stt_engine import STTEngine
 from llm_engine import LLMEngine
 from tts_engine import TTSEngine
+from ui_engine import UIEngine
+
+global_ui_engine = None
 
 async def shutdown(loop, signal=None):
     """Gracefully cleans up tasks on exit (Ctrl+C)."""
+    global global_ui_engine
     if signal:
         print(f"\nReceived exit signal {signal.name}...")
     print("Shutting down Voice AI Engine...")
     
+    if global_ui_engine:
+        try:
+            global_ui_engine.close()
+        except Exception:
+            pass
+            
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     [task.cancel() for task in tasks]
     
@@ -32,12 +42,17 @@ async def keyboard_interrupt_listener(barge_in_event: asyncio.Event):
         barge_in_event.set()
 
 async def main():
+    global global_ui_engine
     print("🚀 Initializing Local Voice Assistant...")
 
     # 1. Global State & Queues
     barge_in_event = asyncio.Event()
     
     # 2. Instantiate all modules
+    ui_engine = UIEngine()
+    global_ui_engine = ui_engine
+    ui_engine.start()
+    
     audio_engine = AudioPipeline()          # Connects Mic -> VAD (creates its own speech queue)
     stt_engine = STTEngine()                # Transcribes endpointed speech
     llm_engine = LLMEngine()                # Ollama Llama-3.1 + Tools (creates tts_text_queue)
@@ -52,7 +67,7 @@ async def main():
         # 3. Launch all worker loops concurrently
         await asyncio.gather(
             # Input pipeline
-            audio_engine.vad_processing_loop(tts_engine),
+            audio_engine.vad_processing_loop(tts_engine, ui_engine),
             stt_engine.process_speech_queue(audio_engine.speech_buffer_queue),
             
             # Orchestration
@@ -60,7 +75,7 @@ async def main():
             
             # Output pipeline
             tts_engine.synthesis_worker(llm_engine.tts_queue, barge_in_event),
-            tts_engine.playback_worker(barge_in_event),
+            tts_engine.playback_worker(barge_in_event, ui_engine),
             
             # Keyboard interruption
             keyboard_interrupt_listener(barge_in_event),

@@ -20,6 +20,7 @@ class TTSEngine:
         # Internal async queue to buffer synthesized audio chunks
         self.audio_playback_queue = asyncio.Queue()
         self.is_playing = False
+        self.current_amplitude = 0.0
 
     def _synthesize_sync(self, text: str) -> np.ndarray:
         """
@@ -71,7 +72,7 @@ class TTSEngine:
             except Exception as e:
                 print(f"[TTS Error] {e}")
 
-    async def playback_worker(self, barge_in_event: asyncio.Event):
+    async def playback_worker(self, barge_in_event: asyncio.Event, ui_engine=None):
         """Consumes audio arrays and plays them via sounddevice OutputStream."""
         print("🔊 Audio Playback worker ready.")
         
@@ -90,6 +91,7 @@ class TTSEngine:
                 current_chunk = None
                 current_index = 0
                 self.is_playing = False
+                self.current_amplitude = 0.0
                 return
 
             outdata.fill(0)
@@ -115,7 +117,12 @@ class TTSEngine:
                     needed = frames - filled
                     to_copy = min(remaining, needed)
                     
-                    outdata[filled:filled+to_copy, 0] = current_chunk[current_index : current_index+to_copy]
+                    chunk_slice = current_chunk[current_index : current_index+to_copy]
+                    outdata[filled:filled+to_copy, 0] = chunk_slice
+                    
+                    # Compute amplitude of current playing segment
+                    amp = np.max(np.abs(chunk_slice)) if len(chunk_slice) > 0 else 0.0
+                    self.current_amplitude = float(amp)
                     
                     current_index += to_copy
                     filled += to_copy
@@ -124,6 +131,8 @@ class TTSEngine:
                         current_chunk = None
                         current_index = 0
             
+            if not has_voice:
+                self.current_amplitude = 0.0
             self.is_playing = has_voice
 
         # Open a persistent output stream
@@ -137,17 +146,31 @@ class TTSEngine:
                 # 1. Check for barge-in
                 if barge_in_event.is_set():
                     self.is_playing = False
+                    self.current_amplitude = 0.0
                     current_chunk = None
                     current_index = 0
+                    if ui_engine:
+                        ui_engine.set_state("IDLE")
+                        ui_engine.set_amplitude(0.0)
                     # Empty the playback queue instantly
                     while not self.audio_playback_queue.empty():
                         try:
                             self.audio_playback_queue.get_nowait()
                         except asyncio.QueueEmpty:
                             break
+                
+                # 2. Update UI engine state if active
+                if self.is_playing:
+                    if ui_engine:
+                        ui_engine.set_state("SPEAKING")
+                        ui_engine.set_amplitude(self.current_amplitude)
+                else:
+                    if ui_engine and ui_engine.state == "SPEAKING":
+                        ui_engine.set_state("IDLE")
+                        ui_engine.set_amplitude(0.0)
                         
-                # 2. Keep the stream alive
-                await asyncio.sleep(0.1)
+                # 3. Keep the stream alive
+                await asyncio.sleep(0.05)
 
 # --- Integration Example ---
 async def main():

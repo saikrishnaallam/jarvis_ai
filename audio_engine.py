@@ -30,7 +30,7 @@ class AudioPipeline:
         audio_chunk = np.squeeze(indata.copy())
         self.loop.call_soon_threadsafe(self.raw_audio_queue.put_nowait, audio_chunk)
 
-    async def vad_processing_loop(self, tts_engine=None):
+    async def vad_processing_loop(self, tts_engine=None, ui_engine=None):
         """Consumes raw audio, runs VAD, and endpoints speech."""
         current_speech_buffer = []
         silence_frames = 0
@@ -71,6 +71,8 @@ class AudioPipeline:
                         self.is_user_speaking = True
                         self.barge_in_event.set() 
                         print("\n[VAD] Speech onset detected. Triggering barge-in.")
+                        if ui_engine:
+                            ui_engine.set_state("LISTENING")
                     
                     current_speech_buffer.append(chunk)
                     silence_frames = 0
@@ -82,6 +84,8 @@ class AudioPipeline:
                         # Dynamic Endpointing: Has the user stopped speaking?
                         if silence_frames > max_silence_frames:
                             self.is_user_speaking = False
+                            if ui_engine:
+                                ui_engine.set_state("THINKING")
                             
                             # Concatenate buffer and push to STT queue
                             final_audio = np.concatenate(current_speech_buffer)

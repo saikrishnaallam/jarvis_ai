@@ -48,6 +48,7 @@ graph TD
 - **👂 Speech-to-Text (STT)**: Powered by **faster-whisper** (`tiny.en`) for fast, local transcription.
 - **🧠 Async LLM & Tool Calling**: Utilizes Ollama's asynchronous client (`AsyncClient`) for real-time sentence streaming and local function execution (e.g., getting weather, checking time, and smart home lighting controls).
 - **🔊 Text-to-Speech (TTS)**: Powered by **Kokoro TTS** (high-quality American English voice `af_heart`) streaming audio to speakers via PortAudio (`sounddevice`).
+- **🔮 Siri-like Floating UI**: Borderless desktop widget that shifts states (Idle, Listening, Thinking, and Speaking) and dynamically pulses/dances in real-time in response to the speaker amplitude.
 - **🐳 Containerized Deployment**: Complete `Dockerfile` setup for ALSA and PortAudio Linux builds.
 
 ---
@@ -58,6 +59,7 @@ graph TD
 - [stt_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/stt_engine.py): Consumes speech buffers and transcribes them asynchronously in background threads.
 - [llm_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/llm_engine.py): Asynchronously orchestrates memory buffers, stream parsing, and handles local tool calling (weather, lights, time).
 - [tts_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/tts_engine.py): Synthesizes audio sentences and handles streaming playback via sounddevice.
+- [ui_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/ui_engine.py): Tkinter-based floating desktop widget running on a background thread for Siri-like visual state feedback.
 - [main.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/main.py): Central entry point that coordinates the worker loops concurrently.
 
 ---
