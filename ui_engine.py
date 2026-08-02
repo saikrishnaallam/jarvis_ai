@@ -3,6 +3,12 @@ import tkinter as tk
 import math
 import time
 import os
+try:
+    from PIL import Image, ImageTk
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
 
 class UIEngine:
     def __init__(self):
@@ -44,16 +50,28 @@ class UIEngine:
         self.drag_y = 0
         
         # Load the avatar image
-        avatar_path = "avatar.png"
+        dir_path = os.path.dirname(os.path.abspath(__file__))
+        avatar_path = os.path.join(dir_path, "avatar.png")
         if os.path.exists(avatar_path):
-            try:
-                # Subsample 998x1024 by 10 to fit in 100x100 area
-                self.avatar_img = tk.PhotoImage(file=avatar_path).subsample(10, 10)
-            except Exception as e:
-                print(f"[UI Warning] Failed to load avatar image: {e}")
-                self.avatar_img = None
+            self.avatar_img = None
+            if HAS_PIL:
+                try:
+                    # Load with PIL for better format support and scaling
+                    img = Image.open(avatar_path)
+                    img = img.resize((100, 100), Image.Resampling.LANCZOS)
+                    self.avatar_img = ImageTk.PhotoImage(img)
+                except Exception as e:
+                    print(f"[UI Warning] Failed to load avatar image with PIL: {e}")
+            
+            # Fallback to tk.PhotoImage if PIL is missing or failed
+            if self.avatar_img is None:
+                try:
+                    self.avatar_img = tk.PhotoImage(file=avatar_path).subsample(10, 10)
+                except Exception as e2:
+                    print(f"[UI Warning] Fallback failed: {e2}")
+                    self.avatar_img = None
         else:
-            print("[UI Warning] avatar.png not found.")
+            print(f"[UI Warning] avatar.png not found at {avatar_path}")
             self.avatar_img = None
             
         # Render first frames
@@ -174,3 +192,30 @@ class UIEngine:
                 self.root.destroy()
             except Exception:
                 pass
+
+if __name__ == "__main__":
+    print("Testing UIEngine... Close the window or press Ctrl+C in the terminal to exit.")
+    ui = UIEngine()
+    
+    # List of states to cycle through for visual testing
+    states = ["IDLE", "LISTENING", "THINKING", "SPEAKING"]
+    state_index = [0] # List reference to modify inside nested function
+    
+    def cycle_state():
+        current_state = states[state_index[0]]
+        print(f"Current State: {current_state}")
+        ui.set_state(current_state)
+        if current_state == "SPEAKING":
+            ui.set_amplitude(0.6) # simulate speaking audio amplitude
+        else:
+            ui.set_amplitude(0.0)
+            
+        state_index[0] = (state_index[0] + 1) % len(states)
+        ui.root.after(3000, cycle_state)
+        
+    ui.root.after(1000, cycle_state)
+    try:
+        ui.start()
+    except KeyboardInterrupt:
+        ui.close()
+

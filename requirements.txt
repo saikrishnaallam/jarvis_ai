@@ -8,3 +8,4 @@ ollama>=0.3.0
 kokoro>=0.3.4
 soundfile
 misaka
+Pillow

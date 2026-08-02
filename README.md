@@ -39,6 +39,7 @@ graph TD
 9. **💬 Strict Response Brevity**: Enforced strict brevity constraint in the system prompt (maximum 1-2 sentences under 35 words). Jarvis now behaves like a smart speaker (Alexa/Google Assistant), giving brief summaries instead of long, lockup-inducing lectures.
 10. **⌨️ Interactive Keyboard Barge-In**: Implemented an async console reader thread in `main.py`. Users can press `Enter` in the terminal to instantly interrupt Jarvis, stop playback, and start speaking immediately.
 11. **🕒 Local Time Custom Tool**: Implemented and registered a `get_current_time` Python function, allowing Jarvis to interact with local OS tools and tell you the time accurately.
+12. **🖥️ Floating Desktop UI Face Integration**: Integrated the user-provided circular avatar face into the desktop orb pop-up. Modified the image loading system to dynamically resolve absolute file paths relative to `ui_engine.py` (preventing file-not-found errors if run from other directories) and implemented a robust import logic with a fallback to Tkinter's native `tk.PhotoImage` in case the `Pillow` library is missing. Added a standalone test cycle mode to `ui_engine.py` for easy UI evaluation.
 
 ---
 
@@ -97,9 +98,14 @@ ollama pull llama3.1
 ```
 
 ### Running Locally
-Start the assistant:
+Start the main assistant pipeline:
 ```bash
 python main.py
+```
+
+Or run the UI engine standalone to test the pop-up, check the avatar image rendering, and cycle through visual states/animations:
+```bash
+python ui_engine.py
 ```
 
 ### Docker Deployment (Linux only)
