@@ -136,7 +136,25 @@ class UIEngine:
             
             # 2. Draw the Avatar Image in the center (on top of the glowing rings)
             if self.avatar_img:
-                self.canvas.create_image(cx, cy, image=self.avatar_img)
+                img_x = cx
+                img_y = cy
+                
+                # Apply dynamic, lifelike animations based on the current state
+                if self.state == "SPEAKING":
+                    amp_scale = min(self.amplitude, 1.0)
+                    # Bouncy talking bobbing + amplitude jump
+                    img_y += math.sin(self.tick * 0.3) * (2 + amp_scale * 10)
+                    # Horizontal talking wiggle
+                    img_x += math.cos(self.tick * 0.45) * (amp_scale * 3)
+                elif self.state == "LISTENING":
+                    # Slow, calm breathing bob while listening
+                    img_y += math.sin(self.tick * 0.08) * 1.5
+                elif self.state == "THINKING":
+                    # Slow pondering side-to-side sway
+                    img_x += math.cos(self.tick * 0.1) * 2.0
+                    img_y += math.sin(self.tick * 0.05) * 1.0
+                    
+                self.canvas.create_image(img_x, img_y, image=self.avatar_img)
             else:
                 # Fallback: draw a basic circle representing the face if avatar.png is missing
                 self.canvas.create_oval(cx - 50, cy - 50, cx + 50, cy + 50, 
