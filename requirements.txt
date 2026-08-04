@@ -9,5 +9,3 @@ kokoro>=0.3.4
 soundfile
 misaka
 Pillow
-streamlit
-streamlit-mic-recorder

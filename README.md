@@ -112,12 +112,6 @@ Ensure you have the PortAudio and system text-to-speech libraries installed:
     python main.py --barge-in disabled
     ```
 
-### Start the Streamlit Web Dashboard:
-To run the browser-based Jarvis Voice dashboard with animated orb visualizations, settings options, and voice controls, run:
-```bash
-streamlit run app_streamlit.py
-```
-
 ### Standalone UI Testing:
 To test the floating desktop widget in isolation (which cycles through visual states and tests the dynamic avatar scaling), run:
 ```bash
