@@ -38,7 +38,7 @@ def cancel_all_tasks(loop):
     for task in tasks:
         task.cancel()
 
-async def main(ui_engine, barge_in_mode="smart"):
+async def main(ui_engine, barge_in_mode="smart", stt_model="base.en"):
     print("🚀 Initializing Local Voice Assistant...")
 
     # 1. Global State & Queues
@@ -46,7 +46,7 @@ async def main(ui_engine, barge_in_mode="smart"):
     
     # 2. Instantiate all modules
     audio_engine = AudioPipeline(barge_in_mode=barge_in_mode)          # Connects Mic -> VAD (creates its own speech queue)
-    stt_engine = STTEngine()                # Transcribes endpointed speech
+    stt_engine = STTEngine(model_size=stt_model)                # Transcribes endpointed speech
     llm_engine = LLMEngine()                # Ollama chat orchestrator with custom tools
     tts_engine = TTSEngine()                # Kokoro TTS + Speaker playback
     
@@ -89,11 +89,11 @@ async def main(ui_engine, barge_in_mode="smart"):
     except asyncio.CancelledError:
         pass # Expected on shutdown
 
-def run_asyncio_thread(loop, ui_engine, barge_in_mode="smart"):
+def run_asyncio_thread(loop, ui_engine, barge_in_mode="smart", stt_model="base.en"):
     """Runs the asyncio event loop inside a daemon thread."""
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(main(ui_engine, barge_in_mode))
+        loop.run_until_complete(main(ui_engine, barge_in_mode, stt_model))
     except Exception as e:
         print(f"[Async Thread Error] {e}")
     finally:
@@ -105,6 +105,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Jarvis Voice AI Assistant")
     parser.add_argument("--barge-in", choices=["smart", "headphones", "disabled"], default="smart",
                         help="Barge-in mode: 'smart' (volume-gated), 'headphones' (fully duplex, no echo lock), or 'disabled' (half-duplex lock)")
+    parser.add_argument("--stt-model", default="base.en",
+                        help="Whisper model size: tiny.en, base.en, small.en, medium.en")
     args = parser.parse_args()
     
     # 1. Instantiate the UI on the main thread (Cocoa requirement on macOS)
@@ -121,7 +123,7 @@ if __name__ == "__main__":
     
     # 4. Start the background thread for the voice pipeline
     async_thread = threading.Thread(
-        target=lambda: run_asyncio_thread(loop, ui_engine, args.barge_in),
+        target=lambda: run_asyncio_thread(loop, ui_engine, args.barge_in, args.stt_model),
         daemon=True
     )
     async_thread.start()

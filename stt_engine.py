@@ -4,7 +4,7 @@ import numpy as np
 from faster_whisper import WhisperModel
 
 class STTEngine:
-    def __init__(self, model_size="tiny.en", device="cpu"):
+    def __init__(self, model_size="base.en", device="cpu"):
         """
         Initializes the STT Engine. 
         For CPU, use 'int8' compute type for speed. 
