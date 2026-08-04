@@ -163,13 +163,14 @@ class LLMEngine:
                 return [search_web]
             return [get_latest_news]
             
-        # 5. Live Web Search Tool (for time-sensitive, dynamic, or financial web facts)
-        if any(kw in text_lower for kw in ["current", "latest", "today", "yesterday", "stock", "price", "score", "game", "winner", "who won", "dollar", "rate", "exchange"]):
+        # 5. Live Web & General Knowledge Search Tool (routes all questions to DuckDuckGo search)
+        search_keywords = [
+            "search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of", 
+            "how to", "who was", "where is", "where was", "current", "latest", "today", "yesterday", 
+            "stock", "price", "score", "game", "winner", "who won", "dollar", "rate", "exchange"
+        ]
+        if any(kw in text_lower for kw in search_keywords):
             return [search_web]
-            
-        # 6. Wikipedia Search Tool (general knowledge/static descriptions of people, places, history, science)
-        if any(kw in text_lower for kw in ["search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of", "how to", "who was", "where is", "where was"]):
-            return [search_wikipedia]
             
         # No tools for general chat/greetings/statements
         return []
