@@ -106,6 +106,12 @@ To test the floating desktop widget in isolation (which cycles through visual st
 python ui_engine.py
 ```
 
+### Running Unit Tests:
+To run the automated unittest suite (which tests custom tools, Wikipedia search integration, memory pruning, VAD modes, and system formats), run:
+```bash
+python -m unittest test_jarvis.py
+```
+
 ### Docker Deployment (Linux only)
 To build and run the assistant container, exposing your audio hardware driver:
 ```bash
