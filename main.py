@@ -54,8 +54,8 @@ async def main(ui_engine, barge_in_mode="smart"):
     await asyncio.sleep(1)
     
     # Start background daemon thread to listen for console Enter press interrupts (manual barge-in)
+    loop = asyncio.get_running_loop()
     def read_console_keys():
-        loop = asyncio.get_running_loop()
         import sys
         while True:
             try:
