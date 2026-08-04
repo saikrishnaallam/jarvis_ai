@@ -35,57 +35,61 @@ def search_wikipedia(query: str) -> str:
     import json
     print(f"🔧 [Tool Execution] Searching Wikipedia for '{query}'...")
     try:
-        # Step 1: Search for the matching page title
-        search_url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={urllib.parse.quote(query)}&utf8=1"
-        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'})
+        # Step 1: Search for top 3 matching page titles
+        search_url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={urllib.parse.quote(query)}&utf8=1&srlimit=3"
+        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0'})
         with urllib.request.urlopen(req, timeout=4) as response:
             data = json.loads(response.read().decode())
             results = data.get("query", {}).get("search", [])
             if not results:
                 return f"No Wikipedia results found for '{query}'."
-            best_title = results[0]["title"]
-            
-        # Step 2: Retrieve the extract/summary
-        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(best_title)}"
-        req = urllib.request.Request(summary_url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'})
-        with urllib.request.urlopen(req, timeout=4) as response:
-            data = json.loads(response.read().decode())
-            extract = data.get("extract")
-            if extract:
-                return f"Wikipedia Summary for '{best_title}': {extract}"
-            return f"Found Wikipedia article '{best_title}' but no summary was available."
+        
+        summaries = []
+        for res in results:
+            title = res["title"]
+            # Step 2: Retrieve the extract/summary for this page
+            summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(title)}"
+            req_summary = urllib.request.Request(summary_url, headers={'User-Agent': 'Mozilla/5.0'})
+            try:
+                with urllib.request.urlopen(req_summary, timeout=3) as resp_summary:
+                    sum_data = json.loads(resp_summary.read().decode())
+                    extract = sum_data.get("extract")
+                    if extract:
+                        summaries.append(f"[{title}]: {extract}")
+            except Exception:
+                continue
+        
+        if summaries:
+            return "Wikipedia Search Results:\n" + "\n\n".join(summaries)
+        return f"Found matching articles but could not retrieve summaries for '{query}'."
     except Exception as e:
         return f"Error searching Wikipedia: {str(e)}"
 
-def search_duckduckgo(query: str) -> str:
-    """Search the web using DuckDuckGo to get the most current, real-time information, news, current events, or facts."""
+def get_latest_news() -> str:
+    """Fetches the latest real-time global breaking news headlines and summaries from Google News RSS."""
     import urllib.request
-    import urllib.parse
-    import re
-    print(f"🔧 [Tool Execution] Searching DuckDuckGo for '{query}'...")
+    import xml.etree.ElementTree as ET
+    print("🔧 [Tool Execution] Fetching latest news from Google News RSS...")
     try:
-        url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'})
-        with urllib.request.urlopen(req, timeout=4) as response:
-            html = response.read().decode('utf-8', errors='ignore')
-            
-        # Parse snippets
-        snippets = re.findall(r'<a class="result__snippet"[^>]*>(.*?)</a>', html, re.DOTALL)
+        url = "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req, timeout=5) as response:
+            xml_data = response.read()
         
-        # Clean HTML tags
-        def clean_html(text):
-            text = re.sub(r'<[^>]+>', '', text)
-            text = text.replace('&amp;', '&').replace('&quot;', '"').replace('&#x27;', "'").replace('&lt;', '<').replace('&gt;', '>')
-            return text.strip()
-            
-        cleaned_snippets = [clean_html(s) for s in snippets[:3]]
+        root = ET.fromstring(xml_data)
+        items = root.findall(".//item")
         
-        if cleaned_snippets:
-            result = "\n".join([f"- {s}" for s in cleaned_snippets])
-            return f"DuckDuckGo Search Results for '{query}':\n{result}"
-        return f"No search results found on DuckDuckGo for '{query}'."
+        news_reports = []
+        for item in items[:4]:
+            title = item.find("title").text
+            pub_date = item.find("pubDate").text
+            news_reports.append(f"- {title} ({pub_date})")
+            
+        if news_reports:
+            return "Current Live News Headlines:\n" + "\n".join(news_reports)
+        return "No news items found."
     except Exception as e:
-        return f"Error searching DuckDuckGo: {str(e)}"
+        return f"Error retrieving latest news: {str(e)}"
 
 # ---------------------------------------------------------
 # 2. LLM Orchestrator
@@ -108,7 +112,7 @@ class LLMEngine:
         self.messages = [self.system_prompt]
         
         # Available tools for the LLM
-        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia, search_duckduckgo]
+        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia, get_latest_news]
         
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
