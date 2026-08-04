@@ -35,9 +35,9 @@ graph TD
 *   **⚡ Sub-100ms First-Syllable Latency**: Optimized using real-time audio chunk streaming, Whisper VAD-bypass, and fine-tuned Ollama configurations.
 *   **🔮 Siri-Like Desktop Orb**: A borderless, floating UI widget that breathes when listening, sways when thinking, and pulsates/scales dynamically in direct response to the speaker's volume (amplitude) when speaking.
 *   **🔒 100% Offline & Private**: All models (Silero VAD, Whisper STT, Llama LLM, Kokoro TTS) run completely locally on your hardware.
-*   **🔄 Smart Barge-In**: Press `Enter` in the console or just speak over the assistant; the pipeline instantly cancels current synthesis playback and switches back to listening.
-*   **🛡️ Echo & Loop Prevention**: Built-in Half-Duplex lock and dynamic echo decay cooldown to prevent the assistant from hearing and transcribing its own speakers.
-*   **🔧 Local Tool Plugins**: Built-in support for Python function execution (e.g. checking local time, fetching weather info, and toggling smart lights).
+*   **🔄 Configurable Barge-In (Full Duplex)**: Speak over the assistant to interrupt it at any time. Supports `smart` (volume-gated for speakers), `headphones` (fully duplex, open microphone), and `disabled` modes.
+*   **🛡️ Echo & Loop Prevention**: Dynamic echo decay cooldown and amplitude thresholding to prevent the assistant from hearing and transcribing its own speech from speakers.
+*   **🔧 Local Tool Plugins**: Python function plugins (e.g. checking local time, fetching weather info, toggling smart lights, and searching Wikipedia for real-time fact lookups).
 
 ---
 
@@ -96,9 +96,18 @@ Ensure you have the PortAudio and system text-to-speech libraries installed:
 ## 🚀 Running the Application
 
 ### Start the full Assistant:
-```bash
-python main.py
-```
+*   **Smart Mode** (Default - recommended for standard speakers):
+    ```bash
+    python main.py
+    ```
+*   **Headphones Mode** (Recommended for headphones - fully duplex, open microphone):
+    ```bash
+    python main.py --barge-in headphones
+    ```
+*   **Disabled Mode** (Traditional half-duplex mic lock during speaking):
+    ```bash
+    python main.py --barge-in disabled
+    ```
 
 ### Standalone UI Testing:
 To test the floating desktop widget in isolation (which cycles through visual states and tests the dynamic avatar scaling), run:
