@@ -38,15 +38,6 @@ def cancel_all_tasks(loop):
     for task in tasks:
         task.cancel()
 
-async def keyboard_interrupt_listener(barge_in_event: asyncio.Event):
-    """Listens for the user hitting 'Enter' in the console to trigger an instant barge-in."""
-    loop = asyncio.get_running_loop()
-    while True:
-        # Run stdin reading in an executor thread so it doesn't block the main event loop
-        await loop.run_in_executor(None, sys.stdin.readline)
-        print("\n⌨️ [Console] Interruption triggered by user!")
-        barge_in_event.set()
-
 async def main(ui_engine, barge_in_mode="smart"):
     print("🚀 Initializing Local Voice Assistant...")
 
@@ -61,6 +52,23 @@ async def main(ui_engine, barge_in_mode="smart"):
     
     # Wait a moment for models to load into memory
     await asyncio.sleep(1)
+    
+    # Start background daemon thread to listen for console Enter press interrupts (manual barge-in)
+    def read_console_keys():
+        loop = asyncio.get_running_loop()
+        import sys
+        while True:
+            try:
+                line = sys.stdin.readline()
+                if not line:
+                    break
+                # Safely trigger event in event loop from the thread
+                loop.call_soon_threadsafe(barge_in_event.set)
+                print("\n⌨️ [Console] Interruption triggered by user!")
+            except Exception:
+                break
+                
+    threading.Thread(target=read_console_keys, daemon=True).start()
     
     print("\n🟢 All systems online. Say something!")
     
@@ -77,9 +85,6 @@ async def main(ui_engine, barge_in_mode="smart"):
             # Output pipeline
             tts_engine.synthesis_worker(llm_engine.tts_queue, barge_in_event),
             tts_engine.playback_worker(barge_in_event, ui_engine),
-            
-            # Keyboard interruption
-            keyboard_interrupt_listener(barge_in_event),
         )
     except asyncio.CancelledError:
         pass # Expected on shutdown
