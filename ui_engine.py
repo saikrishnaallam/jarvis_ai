@@ -157,6 +157,7 @@ class UIEngine:
             if self.avatar_img:
                 img_x = cx
                 img_y = cy
+                scale_factor = 1.0
                 
                 # Apply dynamic, lifelike animations based on the current state
                 if self.state == "SPEAKING":
@@ -213,8 +214,16 @@ class UIEngine:
                             self.avatar_img = ImageTk.PhotoImage(resized_img)
                         except Exception:
                             pass
-                            
+                
+                # Draw a solid white circle background behind the face to prevent macOS transparency compositing bugs
+                bg_size = max(5, int(49 * scale_factor)) # slightly smaller than image radius to prevent white bleed
+                self.canvas.create_oval(img_x - bg_size, img_y - bg_size, img_x + bg_size, img_y + bg_size, 
+                                        fill="#ffffff", outline="", width=0)
+                
+                # Render the image centered on top of the solid white circle background
                 self.canvas.create_image(img_x, img_y, image=self.avatar_img)
+                self.canvas.image = self.avatar_img # Keep explicit reference on canvas to prevent GC
+                
             else:
                 # Fallback: draw a basic circle representing the face if avatar.png is missing
                 self.canvas.create_oval(cx - 50, cy - 50, cx + 50, cy + 50, 
