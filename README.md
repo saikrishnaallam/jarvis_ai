@@ -52,6 +52,14 @@ graph TD
 
 ---
 
+## Real-Time Web Information
+
+Jarvis can now fetch the latest information from the web in real time. When you ask questions that require up‑to‑date data—such as current stock prices, breaking news, or the latest factual information—Jarvis will automatically invoke the **search_web** tool. This tool uses DuckDuckGo's instant answer API and Yahoo Finance for stock data to provide you with concise, current results.
+
+You don't need to do anything extra; simply ask your question, and Jarvis will determine if a live web lookup is appropriate.
+- **Political Leader Queries**: Asking about current presidents, prime ministers, governors, mayors, or other leaders now triggers an automatic live web lookup.
+---
+
 ## 🏎️ Core Latency & Technical Optimizations
 
 We implemented several key refinements to ensure the voice agent is highly conversational and fluid:
