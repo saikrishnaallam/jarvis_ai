@@ -51,15 +51,18 @@ class AudioPipeline:
                 chunk = await self.raw_audio_queue.get()
                 
                 current_time = self.loop.time()
+                
+                # Check if cooldown is active (only applies after playback has finished)
+                is_cooldown_active = False
+                if tts_engine and not tts_engine.is_playing:
+                    if current_time - last_playback_time < 0.35:
+                        is_cooldown_active = True
+                        
                 if tts_engine and tts_engine.is_playing:
                     last_playback_time = current_time
                 
                 # Check locks based on the configured barge_in_mode
                 is_speaking_lock = False
-                is_cooldown_active = False
-                
-                if tts_engine and (current_time - last_playback_time < 0.35):
-                    is_cooldown_active = True
                 
                 if tts_engine and tts_engine.is_playing:
                     if self.barge_in_mode == "disabled":
