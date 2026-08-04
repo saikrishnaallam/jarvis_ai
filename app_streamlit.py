@@ -328,24 +328,30 @@ if audio_record:
         audio_16k, samplerate = load_audio_robust(raw_audio_bytes)
     
     # 3. Transcribe speech using Whisper
+    import time
+    t0 = time.time()
     with st.spinner("STT transcribing voice..."):
         segments, _ = stt_engine.model.transcribe(audio_16k, beam_size=1)
         transcription = "".join([segment.text for segment in segments]).strip()
+    t_stt = time.time() - t0
         
     if transcription:
         st.session_state.chat_history.append({"role": "user", "content": transcription})
         
         # 4. Generate LLM text response
+        t0 = time.time()
         with st.spinner("Jarvis is thinking..."):
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
             response_text = loop.run_until_complete(run_llm_inference(transcription))
             loop.close()
+        t_llm = time.time() - t0
             
         st.session_state.chat_history.append({"role": "assistant", "content": response_text})
         
         # 5. Synthesize TTS response
         st.session_state.orb_state = "speaking"
+        t0 = time.time()
         with st.spinner("Synthesizing speech response..."):
             generator = tts_pipeline(response_text, voice=voice, speed=speed, split_pattern=None)
             audio_chunks = []
@@ -356,6 +362,15 @@ if audio_record:
                 full_audio = np.concatenate(audio_chunks)
                 # Output audio directly to the browser with HTML5 autoplay
                 play_audio_autoplay(full_audio, sample_rate=24000)
+        t_tts = time.time() - t0
+        
+        # Save timings to state
+        st.session_state.last_timings = {
+            "STT": f"{t_stt:.2f}s",
+            "LLM": f"{t_llm:.2f}s",
+            "TTS": f"{t_tts:.2f}s",
+            "Total": f"{(t_stt + t_llm + t_tts):.2f}s"
+        }
                 
         # Reset to listening
         st.session_state.orb_state = "listening"
@@ -371,3 +386,12 @@ if st.session_state.chat_history:
     for msg in st.session_state.chat_history[::-1]: # Show latest first
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
+
+# Render Latency Diagnostics
+if "last_timings" in st.session_state:
+    st.markdown("### ⚡ Latency Diagnostics")
+    cols = st.columns(4)
+    cols[0].metric("STT (Transcribe)", st.session_state.last_timings["STT"])
+    cols[1].metric("LLM (Reasoning)", st.session_state.last_timings["LLM"])
+    cols[2].metric("TTS (Synthesis)", st.session_state.last_timings["TTS"])
+    cols[3].metric("Total Turnaround", st.session_state.last_timings["Total"])
