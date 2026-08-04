@@ -117,20 +117,34 @@ class LLMEngine:
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
         
-    def should_enable_tools(self, text: str) -> bool:
-        """Detects if the user's query requires tool-calling capabilities."""
+    def get_relevant_tools(self, text: str) -> list:
+        """Determines exactly which tools (if any) are relevant to the user query to prevent model confusion."""
         text_lower = text.lower()
         
-        # Tool-specific keywords
-        tool_keywords = [
-            "weather", "temperature", "forecast", "temp", "rain", "sunny", "hot", "cold",
-            "light", "lamp", "turn on", "turn off", "switch on", "switch off", "toggle",
-            "time", "clock", "date", "day is it",
-            "search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of",
-            "how to", "who was", "where is", "where was", "current", "latest", "news", "president", "today", "yesterday"
-        ]
-        
-        return any(kw in text_lower for kw in tool_keywords)
+        # 1. Weather Tool
+        if any(kw in text_lower for kw in ["weather", "temperature", "forecast", "temp", "rain", "sunny", "hot", "cold"]):
+            return [get_weather]
+            
+        # 2. Smart Lights Tool
+        if any(kw in text_lower for kw in ["light", "lamp", "turn on", "turn off", "switch on", "switch off", "toggle"]):
+            # Special check to make sure it's about lights, not general greetings/chat containing 'on' or 'off'
+            if "light" in text_lower or "lamp" in text_lower or "switch" in text_lower:
+                return [toggle_smart_lights]
+                
+        # 3. Time Tool
+        if any(kw in text_lower for kw in ["time", "clock", "date", "day is it"]):
+            return [get_current_time]
+            
+        # 4. News Tool
+        if any(kw in text_lower for kw in ["news", "headline", "breaking news", "happen today"]):
+            return [get_latest_news]
+            
+        # 5. Wikipedia Search Tool (general knowledge/factual lookups)
+        if any(kw in text_lower for kw in ["search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of", "how to", "who was", "where is", "where was"]):
+            return [search_wikipedia]
+            
+        # No tools for general chat/greetings/statements
+        return []
         
     def _add_to_memory(self, role: str, content: str = "", tool_calls: list = None):
         """Append messages to the conversation buffer."""
@@ -181,9 +195,8 @@ class LLMEngine:
                 latest_user_text = msg["content"]
                 break
                 
-        # Detect if we should expose tools to the LLM based on keywords
-        use_tools = self.should_enable_tools(latest_user_text)
-        tools_to_pass = self.tools if use_tools else None
+        # Dynamically determine the exact tools to pass based on keywords to prevent model confusion
+        tools_to_pass = self.get_relevant_tools(latest_user_text) or None
         
         # 1. Call Ollama with Streaming and Tools conditionally enabled
         response_stream = await self.client.chat(
