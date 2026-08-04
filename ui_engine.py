@@ -44,8 +44,8 @@ class UIEngine:
         self.canvas.pack()
         
         # Make the window moveable (click and drag)
-        self.root.bind("<Button-1>", self.start_drag)
-        self.root.bind("<B1-Motion>", self.drag)
+        self.canvas.bind("<Button-1>", self.start_drag)
+        self.canvas.bind("<B1-Motion>", self.drag)
         self.drag_x = 0
         self.drag_y = 0
         
