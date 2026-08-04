@@ -28,6 +28,35 @@ def get_current_time() -> str:
     print(f"🔧 [Tool Execution] Getting current time: {time_str}...")
     return f"The current time is {time_str}."
 
+def search_wikipedia(query: str) -> str:
+    """Search Wikipedia to get general information, facts, history, or descriptions of people, places, or topics."""
+    import urllib.request
+    import urllib.parse
+    import json
+    print(f"🔧 [Tool Execution] Searching Wikipedia for '{query}'...")
+    try:
+        # Step 1: Search for the matching page title
+        search_url = f"https://en.wikipedia.org/w/api.php?action=query&format=json&list=search&srsearch={urllib.parse.quote(query)}&utf8=1"
+        req = urllib.request.Request(search_url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            data = json.loads(response.read().decode())
+            results = data.get("query", {}).get("search", [])
+            if not results:
+                return f"No Wikipedia results found for '{query}'."
+            best_title = results[0]["title"]
+            
+        # Step 2: Retrieve the extract/summary
+        summary_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(best_title)}"
+        req = urllib.request.Request(summary_url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            data = json.loads(response.read().decode())
+            extract = data.get("extract")
+            if extract:
+                return f"Wikipedia Summary for '{best_title}': {extract}"
+            return f"Found Wikipedia article '{best_title}' but no summary was available."
+    except Exception as e:
+        return f"Error searching Wikipedia: {str(e)}"
+
 # ---------------------------------------------------------
 # 2. LLM Orchestrator
 # ---------------------------------------------------------
@@ -42,14 +71,14 @@ class LLMEngine:
                 "CRITICAL: Keep your responses extremely brief. Limit your output to a maximum of 1 or 2 sentences (under 35 words). "
                 "Never output bullet points, lists, markdown formatting, or long explanations, as your response is being spoken aloud. "
                 "If the user asks a complex question, provide a ultra-brief summary (1 sentence) and ask if they want to hear more. "
-                "Only use tools when explicitly requested by the user. Do not call weather, lights, or time tools for generic greetings, chat, or diagnostics."
+                "Only use tools when explicitly requested by the user. Do not call weather, lights, time, or search tools for generic greetings, chat, or diagnostics."
             )
         }
         # Memory Buffer
         self.messages = [self.system_prompt]
         
         # Available tools for the LLM
-        self.tools = [get_weather, toggle_smart_lights, get_current_time]
+        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia]
         
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
