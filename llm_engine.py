@@ -83,6 +83,21 @@ class LLMEngine:
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
         
+    def should_enable_tools(self, text: str) -> bool:
+        """Detects if the user's query requires tool-calling capabilities."""
+        text_lower = text.lower()
+        
+        # Tool-specific keywords
+        tool_keywords = [
+            "weather", "temperature", "forecast", "temp", "rain", "sunny", "hot", "cold",
+            "light", "lamp", "turn on", "turn off", "switch on", "switch off", "toggle",
+            "time", "clock", "date", "day is it",
+            "search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of",
+            "how to", "who was", "where is", "where was"
+        ]
+        
+        return any(kw in text_lower for kw in tool_keywords)
+        
     def _add_to_memory(self, role: str, content: str = "", tool_calls: list = None):
         """Append messages to the conversation buffer."""
         msg = {"role": role, "content": content}
@@ -125,11 +140,22 @@ class LLMEngine:
         
         print("🧠 Thinking...")
         
-        # 1. Call Ollama with Streaming and Tools enabled
+        # Get the latest user query to check if we should enable tools
+        latest_user_text = ""
+        for msg in reversed(self.messages):
+            if msg["role"] == "user":
+                latest_user_text = msg["content"]
+                break
+                
+        # Detect if we should expose tools to the LLM based on keywords
+        use_tools = self.should_enable_tools(latest_user_text)
+        tools_to_pass = self.tools if use_tools else None
+        
+        # 1. Call Ollama with Streaming and Tools conditionally enabled
         response_stream = await self.client.chat(
             model=self.model,
             messages=self.messages,
-            tools=self.tools,
+            tools=tools_to_pass,
             stream=True,
             options={
                 "temperature": 0.0,       # Fast greedy decoding
