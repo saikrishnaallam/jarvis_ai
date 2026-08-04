@@ -360,8 +360,16 @@ if audio_record:
             
             if audio_chunks:
                 full_audio = np.concatenate(audio_chunks)
-                # Output audio directly to the browser with HTML5 autoplay
-                play_audio_autoplay(full_audio, sample_rate=24000)
+                
+                # 1. Play directly out of local hardware speakers (instant, bypasses browser autoplay locks)
+                try:
+                    import sounddevice as sd
+                    sd.play(full_audio, 24000)
+                except Exception as sd_err:
+                    st.warning(f"Local playback warning: {sd_err}")
+                
+                # 2. Render standard visible player in browser (so they can replay/download)
+                st.audio(full_audio, sample_rate=24000)
         t_tts = time.time() - t0
         
         # Save timings to state
