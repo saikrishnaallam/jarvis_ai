@@ -100,7 +100,12 @@ class LLMEngine:
             model=self.model,
             messages=self.messages,
             tools=self.tools,
-            stream=True
+            stream=True,
+            options={
+                "temperature": 0.0,       # Fast greedy decoding
+                "num_ctx": 1024,          # Lower context load overhead
+                "num_predict": 50         # Prevent long-tail generation delays
+            }
         )
 
         current_sentence = ""

@@ -34,7 +34,7 @@ class AudioPipeline:
         """Consumes raw audio, runs VAD, and endpoints speech."""
         current_speech_buffer = []
         silence_frames = 0
-        max_silence_frames = int(0.8 / (self.chunk_size / self.sample_rate)) # 0.8s silence threshold
+        max_silence_frames = int(0.35 / (self.chunk_size / self.sample_rate)) # 0.35s silence threshold (down from 0.8s)
         
         print("🎙️ Listening...")
         
@@ -51,8 +51,8 @@ class AudioPipeline:
                 if tts_engine and tts_engine.is_playing:
                     last_playback_time = current_time
                 
-                # If assistant is speaking, or we are in the 1.0s echo cooldown period, discard incoming audio
-                if tts_engine and (tts_engine.is_playing or (current_time - last_playback_time < 1.0)):
+                # If assistant is speaking, or we are in the 0.35s echo cooldown period, discard incoming audio (down from 1.0s)
+                if tts_engine and (tts_engine.is_playing or (current_time - last_playback_time < 0.35)):
                     self.is_user_speaking = False
                     current_speech_buffer = []
                     silence_frames = 0

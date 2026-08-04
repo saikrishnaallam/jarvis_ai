@@ -57,17 +57,27 @@ class TTSEngine:
                 await self.audio_playback_queue.put(None) 
                 continue
 
-            # 2. Synthesize audio in a background thread to prevent blocking event loop
+            # 2. Synthesize audio segment-by-segment and stream to queue immediately
             try:
                 print(f"🔊 [TTS] Synthesizing: \"{text}\"")
-                audio_array = await asyncio.to_thread(self._synthesize_sync, text)
+                loop = asyncio.get_running_loop()
                 
-                # If barge-in happened *during* synthesis, throw the audio away
-                if barge_in_event.is_set():
-                    continue
-                    
-                # Push the finished audio chunk to the speaker
-                await self.audio_playback_queue.put(audio_array)
+                def _stream_synthesis():
+                    try:
+                        # Kokoro pipeline yields (graphemes, phonemes, audio_tensor)
+                        generator = self.pipeline(text, voice=self.voice, speed=1.1, split_pattern=None)
+                        for _, _, audio in generator:
+                            # Stop immediately if a barge-in event occurs during synthesis
+                            if barge_in_event.is_set():
+                                break
+                            audio_np = audio.numpy()
+                            # Push chunk to the playback queue thread-safely
+                            loop.call_soon_threadsafe(self.audio_playback_queue.put_nowait, audio_np)
+                    except Exception as err:
+                        print(f"[TTS Synthesis Thread Error] {err}")
+                
+                # Offload synthesis loop to worker thread
+                await asyncio.to_thread(_stream_synthesis)
                 
             except Exception as e:
                 print(f"[TTS Error] {e}")
