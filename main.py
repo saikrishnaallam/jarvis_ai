@@ -47,14 +47,14 @@ async def keyboard_interrupt_listener(barge_in_event: asyncio.Event):
         print("\n⌨️ [Console] Interruption triggered by user!")
         barge_in_event.set()
 
-async def main(ui_engine):
+async def main(ui_engine, barge_in_mode="smart"):
     print("🚀 Initializing Local Voice Assistant...")
 
     # 1. Global State & Queues
     barge_in_event = asyncio.Event()
     
     # 2. Instantiate all modules
-    audio_engine = AudioPipeline()          # Connects Mic -> VAD (creates its own speech queue)
+    audio_engine = AudioPipeline(barge_in_mode=barge_in_mode)          # Connects Mic -> VAD (creates its own speech queue)
     stt_engine = STTEngine()                # Transcribes endpointed speech
     llm_engine = LLMEngine()                # Ollama chat orchestrator with custom tools
     tts_engine = TTSEngine()                # Kokoro TTS + Speaker playback
@@ -84,11 +84,11 @@ async def main(ui_engine):
     except asyncio.CancelledError:
         pass # Expected on shutdown
 
-def run_asyncio_thread(loop, ui_engine):
+def run_asyncio_thread(loop, ui_engine, barge_in_mode="smart"):
     """Runs the asyncio event loop inside a daemon thread."""
     asyncio.set_event_loop(loop)
     try:
-        loop.run_until_complete(main(ui_engine))
+        loop.run_until_complete(main(ui_engine, barge_in_mode))
     except Exception as e:
         print(f"[Async Thread Error] {e}")
     finally:
@@ -96,6 +96,12 @@ def run_asyncio_thread(loop, ui_engine):
         print("Asynchronous background thread stopped.")
 
 if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser(description="Jarvis Voice AI Assistant")
+    parser.add_argument("--barge-in", choices=["smart", "headphones", "disabled"], default="smart",
+                        help="Barge-in mode: 'smart' (volume-gated), 'headphones' (fully duplex, no echo lock), or 'disabled' (half-duplex lock)")
+    args = parser.parse_args()
+    
     # 1. Instantiate the UI on the main thread (Cocoa requirement on macOS)
     ui_engine = UIEngine()
     global_ui_engine = ui_engine
@@ -110,7 +116,7 @@ if __name__ == "__main__":
     
     # 4. Start the background thread for the voice pipeline
     async_thread = threading.Thread(
-        target=lambda: run_asyncio_thread(loop, ui_engine),
+        target=lambda: run_asyncio_thread(loop, ui_engine, args.barge_in),
         daemon=True
     )
     async_thread.start()

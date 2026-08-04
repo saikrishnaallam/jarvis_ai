@@ -6,7 +6,7 @@ from silero_vad import load_silero_vad, get_speech_timestamps
 import torch
 
 class AudioPipeline:
-    def __init__(self, sample_rate=16000, chunk_duration_ms=32):
+    def __init__(self, sample_rate=16000, chunk_duration_ms=32, barge_in_mode="smart"):
         self.sample_rate = sample_rate
         self.chunk_size = int(sample_rate * (chunk_duration_ms / 1000))
         
@@ -20,6 +20,9 @@ class AudioPipeline:
         self.is_user_speaking = False
         self.barge_in_event = asyncio.Event()
         self.loop = asyncio.get_running_loop()
+        
+        # Barge-in configuration: "smart" (volume-based), "headphones" (fully open duplex), "disabled"
+        self.barge_in_mode = barge_in_mode
 
     def _audio_callback(self, indata, frames, time, status):
         """Called by sounddevice for every new audio chunk from the mic."""
@@ -51,8 +54,30 @@ class AudioPipeline:
                 if tts_engine and tts_engine.is_playing:
                     last_playback_time = current_time
                 
-                # If assistant is speaking, or we are in the 0.35s echo cooldown period, discard incoming audio (down from 1.0s)
-                if tts_engine and (tts_engine.is_playing or (current_time - last_playback_time < 0.35)):
+                # Check locks based on the configured barge_in_mode
+                is_speaking_lock = False
+                is_cooldown_active = False
+                
+                if tts_engine and (current_time - last_playback_time < 0.35):
+                    is_cooldown_active = True
+                
+                if tts_engine and tts_engine.is_playing:
+                    if self.barge_in_mode == "disabled":
+                        is_speaking_lock = True
+                    elif self.barge_in_mode == "smart":
+                        # Compare microphone amplitude to speaker amplitude
+                        mic_amp = np.max(np.abs(chunk)) if len(chunk) > 0 else 0.0
+                        speaker_amp = getattr(tts_engine, "current_amplitude", 0.0)
+                        # Lock mic only if user volume is not significantly louder than echo
+                        if mic_amp < max(0.08, speaker_amp * 1.5):
+                            is_speaking_lock = True
+                    elif self.barge_in_mode == "headphones":
+                        # Headphones have no acoustic echo, so we don't lock and skip cooldown
+                        is_speaking_lock = False
+                        is_cooldown_active = False
+                
+                # If speaking lock or echo cooldown is active, discard chunk
+                if is_speaking_lock or (self.barge_in_mode != "headphones" and is_cooldown_active):
                     self.is_user_speaking = False
                     current_speech_buffer = []
                     silence_frames = 0
