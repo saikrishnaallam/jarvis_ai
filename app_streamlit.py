@@ -219,6 +219,24 @@ def resample_audio(audio_data, src_sr, target_sr=16000):
     resampled = np.interp(indices, np.arange(len(audio_data)), audio_data)
     return resampled.astype(np.float32)
 
+def play_audio_autoplay(audio_numpy, sample_rate=24000):
+    """Encodes float32 numpy arrays to base64 WAV and plays them automatically in the browser."""
+    import base64
+    import soundfile as sf
+    # Write to a memory buffer
+    wav_io = io.BytesIO()
+    sf.write(wav_io, audio_numpy, sample_rate, format='WAV', subtype='PCM_16')
+    wav_bytes = wav_io.getvalue()
+    b64_audio = base64.b64encode(wav_bytes).decode()
+    
+    # HTML5 audio element with autoplay enabled
+    audio_html = f"""
+        <audio autoplay style="display:none;">
+            <source src="data:audio/wav;base64,{b64_audio}" type="audio/wav">
+        </audio>
+    """
+    st.markdown(audio_html, unsafe_allow_html=True)
+
 async def run_llm_inference(user_text):
     """Executes the tool-calling Ollama chat transaction asynchronously."""
     llm_engine._add_to_memory("user", user_text)
@@ -336,8 +354,8 @@ if audio_record:
             
             if audio_chunks:
                 full_audio = np.concatenate(audio_chunks)
-                # Output audio directly to the browser
-                st.audio(full_audio, sample_rate=24000, autoplay=True)
+                # Output audio directly to the browser with HTML5 autoplay
+                play_audio_autoplay(full_audio, sample_rate=24000)
                 
         # Reset to listening
         st.session_state.orb_state = "listening"
