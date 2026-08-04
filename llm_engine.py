@@ -94,11 +94,53 @@ def get_latest_news() -> str:
 def search_web(query: str) -> str:
     """Search the web to get the most current, real-time live web information, facts, stock prices, scores, or news."""
     print(f"🔧 [Tool Execution] Searching the web for '{query}'...")
+    
+    # 1. Fetch real-time stock price if querying for popular stock symbols
+    stock_info = ""
+    query_lower = query.lower()
+    tickers = {
+        "tesla": "TSLA",
+        "apple": "AAPL",
+        "microsoft": "MSFT",
+        "google": "GOOGL",
+        "amazon": "AMZN",
+        "nvidia": "NVDA",
+        "meta": "META",
+        "netflix": "NFLX",
+        "amd": "AMD",
+        "intel": "INTC"
+    }
+    
+    ticker_found = None
+    for name, ticker in tickers.items():
+        if name in query_lower:
+            ticker_found = ticker
+            break
+            
+    if ticker_found and any(w in query_lower for w in ["stock", "price", "share", "value"]):
+        import urllib.request
+        import json
+        try:
+            url = f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker_found}?interval=1m&range=1d"
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, timeout=3) as response:
+                data = json.loads(response.read().decode())
+                meta = data.get("chart", {}).get("result", [{}])[0].get("meta", {})
+                price = meta.get("regularMarketPrice")
+                currency = meta.get("currency", "USD")
+                if price:
+                    stock_info = f"Real-Time Stock Price for {ticker_found}: {price:.2f} {currency}.\n\n"
+        except Exception as e:
+            print(f"[Stock Lookup] Failed to fetch ticker {ticker_found}: {e}")
+
+    # 2. Query DuckDuckGo text search for general context
     try:
         from duckduckgo_search import DDGS
         with DDGS() as ddgs:
             results = ddgs.text(query, max_results=4)
             if not results:
+                if stock_info:
+                    return stock_info
                 return f"No web search results found for '{query}'."
             
             reports = []
@@ -108,8 +150,10 @@ def search_web(query: str) -> str:
                 href = r.get("href", "")
                 reports.append(f"[{title}] ({href}): {body}")
                 
-            return "Live Web Search Results:\n" + "\n\n".join(reports)
+            return stock_info + "Live Web Search Results:\n" + "\n\n".join(reports)
     except Exception as e:
+        if stock_info:
+            return stock_info
         return f"Error searching the web: {str(e)}"
 
 # ---------------------------------------------------------
@@ -142,37 +186,42 @@ class LLMEngine:
         """Determines exactly which tools (if any) are relevant to the user query to prevent model confusion."""
         text_lower = text.lower()
         
-        # 1. Weather Tool
+        # 1. Filter out common conversational greetings to prevent search triggers
+        greetings = ["how are you", "how is it going", "how's it going", "how are you doing", "what is up", "what's up", "whats up"]
+        if any(g in text_lower for g in greetings):
+            return []
+            
+        # 2. Weather Tool
         if any(kw in text_lower for kw in ["weather", "temperature", "forecast", "temp", "rain", "sunny", "hot", "cold"]):
             return [get_weather]
             
-        # 2. Smart Lights Tool
+        # 3. Smart Lights Tool
         if any(kw in text_lower for kw in ["light", "lamp", "turn on", "turn off", "switch on", "switch off", "toggle"]):
             # Special check to make sure it's about lights, not general greetings/chat containing 'on' or 'off'
             if "light" in text_lower or "lamp" in text_lower or "switch" in text_lower:
                 return [toggle_smart_lights]
                 
-        # 3. Time Tool
+        # 4. Time Tool
         if any(kw in text_lower for kw in ["time", "clock", "date", "day is it"]):
             return [get_current_time]
             
-        # 4. News Tool
-        if any(kw in text_lower for kw in ["news", "headline", "breaking news", "happen today"]):
-            # If they want specific topic search from web, use search_web instead
-            if any(w in text_lower for w in ["search for", "find news about", "news on"]):
-                return [search_web]
+        # 5. News Tool
+        if any(kw in text_lower for kw in ["breaking news", "happen today"]):
             return [get_latest_news]
             
-        # 5. Live Web & General Knowledge Search Tool (routes all questions to DuckDuckGo search)
+        # 6. Live Web & General Knowledge Search Tool
+        # Triggers for question words, entities, research, or real-time event topics
         search_keywords = [
-            "search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of", 
-            "how to", "who was", "where is", "where was", "current", "latest", "today", "yesterday", 
-            "stock", "price", "score", "game", "winner", "who won", "dollar", "rate", "exchange"
+            "who", "what", "where", "why", "how", "when", "which", "whose",
+            "heard of", "know about", "know of", "do you know", "tell me",
+            "search", "wikipedia", "news", "latest", "current", "today", "yesterday",
+            "stock", "price", "score", "game", "winner", "who won", "dollar", "rate", "exchange",
+            "happening", "right now", "situation", "whats going on", "what's going on"
         ]
         if any(kw in text_lower for kw in search_keywords):
             return [search_web]
             
-        # No tools for general chat/greetings/statements
+        # No tools for general statements/chat
         return []
         
     def _add_to_memory(self, role: str, content: str = "", tool_calls: list = None):
