@@ -91,6 +91,27 @@ def get_latest_news() -> str:
     except Exception as e:
         return f"Error retrieving latest news: {str(e)}"
 
+def search_web(query: str) -> str:
+    """Search the web to get the most current, real-time live web information, facts, stock prices, scores, or news."""
+    print(f"🔧 [Tool Execution] Searching the web for '{query}'...")
+    try:
+        from duckduckgo_search import DDGS
+        with DDGS() as ddgs:
+            results = ddgs.text(query, max_results=4)
+            if not results:
+                return f"No web search results found for '{query}'."
+            
+            reports = []
+            for r in results:
+                title = r.get("title", "")
+                body = r.get("body", "")
+                href = r.get("href", "")
+                reports.append(f"[{title}] ({href}): {body}")
+                
+            return "Live Web Search Results:\n" + "\n\n".join(reports)
+    except Exception as e:
+        return f"Error searching the web: {str(e)}"
+
 # ---------------------------------------------------------
 # 2. LLM Orchestrator
 # ---------------------------------------------------------
@@ -112,7 +133,7 @@ class LLMEngine:
         self.messages = [self.system_prompt]
         
         # Available tools for the LLM
-        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia, get_latest_news]
+        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia, get_latest_news, search_web]
         
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
@@ -137,9 +158,16 @@ class LLMEngine:
             
         # 4. News Tool
         if any(kw in text_lower for kw in ["news", "headline", "breaking news", "happen today"]):
+            # If they want specific topic search from web, use search_web instead
+            if any(w in text_lower for w in ["search for", "find news about", "news on"]):
+                return [search_web]
             return [get_latest_news]
             
-        # 5. Wikipedia Search Tool (general knowledge/factual lookups)
+        # 5. Live Web Search Tool (for time-sensitive, dynamic, or financial web facts)
+        if any(kw in text_lower for kw in ["current", "latest", "today", "yesterday", "stock", "price", "score", "game", "winner", "who won", "dollar", "rate", "exchange"]):
+            return [search_web]
+            
+        # 6. Wikipedia Search Tool (general knowledge/static descriptions of people, places, history, science)
         if any(kw in text_lower for kw in ["search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of", "how to", "who was", "where is", "where was"]):
             return [search_wikipedia]
             

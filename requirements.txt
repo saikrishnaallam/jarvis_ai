@@ -9,3 +9,4 @@ kokoro>=0.3.4
 soundfile
 misaka
 Pillow
+duckduckgo-search

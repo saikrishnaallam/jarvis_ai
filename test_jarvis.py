@@ -5,7 +5,7 @@ import datetime
 import asyncio
 
 # Import Jarvis modules
-from llm_engine import LLMEngine, get_weather, toggle_smart_lights, get_current_time, search_wikipedia, get_latest_news
+from llm_engine import LLMEngine, get_weather, toggle_smart_lights, get_current_time, search_wikipedia, get_latest_news, search_web
 from audio_engine import AudioPipeline
 from stt_engine import STTEngine
 from tts_engine import TTSEngine
@@ -121,6 +121,19 @@ class TestJarvisVoiceAgent(unittest.TestCase):
         res = get_latest_news()
         self.assertIn("Breaking News", res)
 
+    @patch("duckduckgo_search.DDGS")
+    def test_search_web_success(self, mock_ddgs_class):
+        """Test search_web custom tool execution returning formatted results."""
+        mock_instance = MagicMock()
+        mock_instance.__enter__.return_value = mock_instance
+        mock_instance.text.return_value = [
+            {"title": "Tesla Stock", "body": "Tesla Stock is up.", "href": "https://tesla.com"}
+        ]
+        mock_ddgs_class.return_value = mock_instance
+        
+        res = search_web("Tesla stock")
+        self.assertIn("Tesla Stock is up", res)
+
     # =========================================================
     # 2. LLMEngine Tests
     # =========================================================
@@ -135,6 +148,7 @@ class TestJarvisVoiceAgent(unittest.TestCase):
         self.assertEqual(llm.messages[0]["role"], "system")
         self.assertIn(search_wikipedia, llm.tools)
         self.assertIn(get_latest_news, llm.tools)
+        self.assertIn(search_web, llm.tools)
 
     @patch("llm_engine.AsyncClient")
     def test_llm_memory_pruning(self, mock_async_client):
