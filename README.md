@@ -52,14 +52,17 @@ graph TD
 
 ---
 
-## 🏎️ Core Latency & UX Optimizations
+## 🏎️ Core Latency & Technical Optimizations
 
 We implemented several key refinements to ensure the voice agent is highly conversational and fluid:
-1.  **Audio Streaming**: Synthesis is streamed clause-by-clause using background threads, meaning the speaker starts playing the beginning of a sentence before the end of the sentence has finished synthesizing.
-2.  **Whisper VAD-Bypass**: By relying strictly on our primary Silero VAD endpoints, we bypassed redundant secondary VAD filtration in `faster-whisper`, shaving off `100-300ms` per turn.
-3.  **Low VAD Endpointing Threshold**: Reduced silence endpointing detection to `0.35s` (down from `1.2s`) to start transcription almost instantly when you finish speaking.
-4.  **Greedy LLM Decoding**: Configured Ollama requests to use greedy decoding (`temperature: 0.0`), a smaller context history window (`num_ctx: 1024`), and short predict bounds to minimize context load latency.
-5.  **Cocoa Compositing Fix**: Added a solid white canvas compositor behind the circular PNG avatar to resolve macOS-specific transparency rendering bugs that make transparent PNGs invisible on transparent Tkinter canvases.
+
+*   **🎙️ Real-Time TTS Chunk Streaming**: Rather than waiting for the entire text response to be synthesized, Kokoro's pipeline generator is executed in a background worker thread. Synthesized audio segments are immediately pushed back to the main thread's audio playback queue using `loop.call_soon_threadsafe`, reducing the first-syllable startup latency to under **50ms**.
+*   **🔄 Adaptive Echo-Gating (Smart Barge-In)**: The system dynamically calculates the Root Mean Square (RMS) amplitude of speaker playback. Microphone input is only gated (locked) if the mic input amplitude is less than `max(0.08, speaker_amplitude * 1.5)`. If the user speaks louder than the speaker volume threshold, the lock is released, and the VAD triggers an instant barge-in interrupt.
+*   **🔇 Whisper VAD-Bypass**: By relying strictly on our primary Silero VAD endpoints for speech capture, we disabled the redundant second-pass VAD filtering in `faster-whisper` (`vad_filter=False`), saving **100–300ms** of transcription latency.
+*   **⏳ Aggressive Silence Endpointing**: Configured the silence detection threshold to `0.35s` (down from `1.2s`) and reduced echo cooldown to `0.35s` to start STT transcription instantly after user speech finishes.
+*   **🎨 macOS Cocoa Transparency Fix**: Standard transparent canvases in macOS Cocoa composite transparent PNG alpha channels against the transparent background window, rendering them completely invisible. We resolved this by drawing a solid white circular background (`canvas.create_oval`) behind the moving avatar matching its exact dynamic scale.
+*   **♻️ Tkinter Garbage Collection Preservation**: Tkinter's C-bindings do not retain references to Python `PhotoImage` objects created dynamically during frame loops (30 FPS), resulting in visual glitches. We prevent this by storing explicit references on the canvas (`self.canvas.image = self.avatar_img`) to bypass Python garbage collection sweeps.
+*   **greedy LLM Decoding**: Configured Ollama prompts with greedy decoding (`temperature: 0.0`), a smaller context history window (`num_ctx: 1024`), and short prediction lengths to avoid context-loading and generation overhead.
 
 ---
 
