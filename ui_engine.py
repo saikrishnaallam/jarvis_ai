@@ -52,13 +52,14 @@ class UIEngine:
         # Load the avatar image
         dir_path = os.path.dirname(os.path.abspath(__file__))
         avatar_path = os.path.join(dir_path, "avatar.png")
+        self.original_avatar_img = None
         if os.path.exists(avatar_path):
             self.avatar_img = None
             if HAS_PIL:
                 try:
-                    # Load with PIL for better format support and scaling
-                    img = Image.open(avatar_path)
-                    img = img.resize((100, 100), Image.Resampling.LANCZOS)
+                    # Load and keep original PIL image for real-time dynamic scaling
+                    self.original_avatar_img = Image.open(avatar_path)
+                    img = self.original_avatar_img.resize((100, 100), Image.Resampling.LANCZOS)
                     self.avatar_img = ImageTk.PhotoImage(img)
                 except Exception as e:
                     print(f"[UI Warning] Failed to load avatar image with PIL: {e}")
@@ -161,17 +162,58 @@ class UIEngine:
                 if self.state == "SPEAKING":
                     amp_scale = min(self.amplitude, 1.0)
                     # Bouncy talking bobbing + amplitude jump
-                    img_y += math.sin(self.tick * 0.3) * (2 + amp_scale * 10)
+                    img_y += math.sin(self.tick * 0.3) * (2 + amp_scale * 12)
                     # Horizontal talking wiggle
-                    img_x += math.cos(self.tick * 0.45) * (amp_scale * 3)
+                    img_x += math.cos(self.tick * 0.45) * (amp_scale * 4)
+                    
+                    # Dynamically scale the image based on amplitude to make it "talk"
+                    if HAS_PIL and self.original_avatar_img:
+                        try:
+                            # Scale factor between 0.9 and 1.3 based on amplitude + wiggle
+                            scale_factor = 0.9 + (amp_scale * 0.35) + 0.05 * math.sin(self.tick * 0.3)
+                            new_size = max(10, int(100 * scale_factor))
+                            resized_img = self.original_avatar_img.resize((new_size, new_size), Image.Resampling.LANCZOS)
+                            self.avatar_img = ImageTk.PhotoImage(resized_img)
+                        except Exception:
+                            pass
                 elif self.state == "LISTENING":
                     # Slow, calm breathing bob while listening
                     img_y += math.sin(self.tick * 0.08) * 1.5
+                    
+                    # Breathe scaling
+                    if HAS_PIL and self.original_avatar_img:
+                        try:
+                            scale_factor = 1.0 + 0.03 * math.sin(self.tick * 0.08)
+                            new_size = max(10, int(100 * scale_factor))
+                            resized_img = self.original_avatar_img.resize((new_size, new_size), Image.Resampling.LANCZOS)
+                            self.avatar_img = ImageTk.PhotoImage(resized_img)
+                        except Exception:
+                            pass
                 elif self.state == "THINKING":
                     # Slow pondering side-to-side sway
                     img_x += math.cos(self.tick * 0.1) * 2.0
                     img_y += math.sin(self.tick * 0.05) * 1.0
                     
+                    # Mild scaling
+                    if HAS_PIL and self.original_avatar_img:
+                        try:
+                            scale_factor = 0.98 + 0.02 * math.cos(self.tick * 0.1)
+                            new_size = max(10, int(100 * scale_factor))
+                            resized_img = self.original_avatar_img.resize((new_size, new_size), Image.Resampling.LANCZOS)
+                            self.avatar_img = ImageTk.PhotoImage(resized_img)
+                        except Exception:
+                            pass
+                else: # IDLE or other state
+                    # Breathe very slowly in idle
+                    if HAS_PIL and self.original_avatar_img:
+                        try:
+                            scale_factor = 1.0 + 0.02 * math.sin(self.tick * 0.04)
+                            new_size = max(10, int(100 * scale_factor))
+                            resized_img = self.original_avatar_img.resize((new_size, new_size), Image.Resampling.LANCZOS)
+                            self.avatar_img = ImageTk.PhotoImage(resized_img)
+                        except Exception:
+                            pass
+                            
                 self.canvas.create_image(img_x, img_y, image=self.avatar_img)
             else:
                 # Fallback: draw a basic circle representing the face if avatar.png is missing
