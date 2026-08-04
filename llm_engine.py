@@ -57,6 +57,36 @@ def search_wikipedia(query: str) -> str:
     except Exception as e:
         return f"Error searching Wikipedia: {str(e)}"
 
+def search_duckduckgo(query: str) -> str:
+    """Search the web using DuckDuckGo to get the most current, real-time information, news, current events, or facts."""
+    import urllib.request
+    import urllib.parse
+    import re
+    print(f"🔧 [Tool Execution] Searching DuckDuckGo for '{query}'...")
+    try:
+        url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'})
+        with urllib.request.urlopen(req, timeout=4) as response:
+            html = response.read().decode('utf-8', errors='ignore')
+            
+        # Parse snippets
+        snippets = re.findall(r'<a class="result__snippet"[^>]*>(.*?)</a>', html, re.DOTALL)
+        
+        # Clean HTML tags
+        def clean_html(text):
+            text = re.sub(r'<[^>]+>', '', text)
+            text = text.replace('&amp;', '&').replace('&quot;', '"').replace('&#x27;', "'").replace('&lt;', '<').replace('&gt;', '>')
+            return text.strip()
+            
+        cleaned_snippets = [clean_html(s) for s in snippets[:3]]
+        
+        if cleaned_snippets:
+            result = "\n".join([f"- {s}" for s in cleaned_snippets])
+            return f"DuckDuckGo Search Results for '{query}':\n{result}"
+        return f"No search results found on DuckDuckGo for '{query}'."
+    except Exception as e:
+        return f"Error searching DuckDuckGo: {str(e)}"
+
 # ---------------------------------------------------------
 # 2. LLM Orchestrator
 # ---------------------------------------------------------
@@ -78,7 +108,7 @@ class LLMEngine:
         self.messages = [self.system_prompt]
         
         # Available tools for the LLM
-        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia]
+        self.tools = [get_weather, toggle_smart_lights, get_current_time, search_wikipedia, search_duckduckgo]
         
         # Async Queues (Connected in main.py)
         self.tts_queue = asyncio.Queue()
@@ -93,7 +123,7 @@ class LLMEngine:
             "light", "lamp", "turn on", "turn off", "switch on", "switch off", "toggle",
             "time", "clock", "date", "day is it",
             "search", "wikipedia", "who is", "tell me about", "what is", "explain", "info", "history of",
-            "how to", "who was", "where is", "where was"
+            "how to", "who was", "where is", "where was", "current", "latest", "news", "president", "today", "yesterday"
         ]
         
         return any(kw in text_lower for kw in tool_keywords)

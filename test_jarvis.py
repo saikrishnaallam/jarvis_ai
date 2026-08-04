@@ -5,7 +5,7 @@ import datetime
 import asyncio
 
 # Import Jarvis modules
-from llm_engine import LLMEngine, get_weather, toggle_smart_lights, get_current_time, search_wikipedia
+from llm_engine import LLMEngine, get_weather, toggle_smart_lights, get_current_time, search_wikipedia, search_duckduckgo
 from audio_engine import AudioPipeline
 from stt_engine import STTEngine
 from tts_engine import TTSEngine
@@ -97,6 +97,44 @@ class TestJarvisVoiceAgent(unittest.TestCase):
         res = search_wikipedia("NonExistentTopic12345")
         self.assertIn("No Wikipedia results found", res)
 
+    @patch("urllib.request.urlopen")
+    def test_search_duckduckgo_success(self, mock_urlopen):
+        """Test search_duckduckgo successfully queries API and parses result snippets."""
+        mock_html = """
+        <html>
+            <body>
+                <div class="result__body">
+                    <a class="result__snippet" href="#">Donald Trump is the 47th President of the United States.</a>
+                </div>
+            </body>
+        </html>
+        """.encode("utf-8")
+        
+        response = MagicMock()
+        response.read.return_value = mock_html
+        
+        mock_cm = MagicMock()
+        mock_cm.__enter__.return_value = response
+        mock_urlopen.return_value = mock_cm
+        
+        res = search_duckduckgo("current president of US")
+        self.assertIn("Donald Trump", res)
+
+    @patch("urllib.request.urlopen")
+    def test_search_duckduckgo_no_results(self, mock_urlopen):
+        """Test search_duckduckgo returns fallback message when no elements match."""
+        mock_html = "<html><body>No results</body></html>".encode("utf-8")
+        
+        response = MagicMock()
+        response.read.return_value = mock_html
+        
+        mock_cm = MagicMock()
+        mock_cm.__enter__.return_value = response
+        mock_urlopen.return_value = mock_cm
+        
+        res = search_duckduckgo("emptyquery123")
+        self.assertIn("No search results found", res)
+
     # =========================================================
     # 2. LLMEngine Tests
     # =========================================================
@@ -110,6 +148,7 @@ class TestJarvisVoiceAgent(unittest.TestCase):
         self.assertEqual(len(llm.messages), 1)
         self.assertEqual(llm.messages[0]["role"], "system")
         self.assertIn(search_wikipedia, llm.tools)
+        self.assertIn(search_duckduckgo, llm.tools)
 
     @patch("llm_engine.AsyncClient")
     def test_llm_memory_pruning(self, mock_async_client):
