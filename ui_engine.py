@@ -80,14 +80,12 @@ class UIEngine:
         self.animate()
         
     def start_drag(self, event):
-        self.drag_x = event.x
-        self.drag_y = event.y
+        self.drag_x = event.x_root - self.root.winfo_x()
+        self.drag_y = event.y_root - self.root.winfo_y()
         
     def drag(self, event):
-        deltax = event.x - self.drag_x
-        deltay = event.y - self.drag_y
-        x = self.root.winfo_x() + deltax
-        y = self.root.winfo_y() + deltay
+        x = event.x_root - self.drag_x
+        y = event.y_root - self.drag_y
         self.root.geometry(f"+{x}+{y}")
         
     def start(self):
