@@ -160,6 +160,55 @@ if st.sidebar.button("🗑️ Clear Chat History"):
 # =========================================================
 # Audio Helper Functions
 # =========================================================
+def load_audio_robust(audio_bytes: bytes) -> tuple:
+    """Loads audio from bytes supporting multiple formats (webm, wav, ogg, etc.) using multiple fallbacks."""
+    # Fallback 1: torchaudio
+    try:
+        import torchaudio
+        import torch
+        waveform, sample_rate = torchaudio.load(io.BytesIO(audio_bytes))
+        # Convert to mono
+        if waveform.shape[0] > 1:
+            waveform = torch.mean(waveform, dim=0, keepdim=True)
+        # Resample to 16000Hz
+        if sample_rate != 16000:
+            resampler = torchaudio.transforms.Resample(orig_freq=sample_rate, new_freq=16000)
+            waveform = resampler(waveform)
+            sample_rate = 16000
+        audio_np = waveform.squeeze().numpy().astype(np.float32)
+        return audio_np, sample_rate
+    except Exception as e:
+        print(f"[Audio Load] torchaudio fallback failed: {e}. Trying PyAV...")
+
+    # Fallback 2: PyAV (av)
+    try:
+        import av
+        container = av.open(io.BytesIO(audio_bytes))
+        stream = container.streams.audio[0]
+        resampler = av.AudioResampler(format='fltp', layout='mono', rate=16000)
+        
+        audio_frames = []
+        for frame in container.decode(stream):
+            resampled_frames = resampler.resample(frame)
+            for rf in resampled_frames:
+                audio_frames.append(rf.to_ndarray().squeeze())
+        
+        if audio_frames:
+            audio_np = np.concatenate(audio_frames).astype(np.float32)
+            return audio_np, 16000
+    except Exception as e:
+        print(f"[Audio Load] PyAV fallback failed: {e}. Trying soundfile...")
+
+    # Fallback 3: soundfile (wav standard)
+    import soundfile as sf
+    data, sample_rate = sf.read(io.BytesIO(audio_bytes))
+    if len(data.shape) > 1:
+        data = np.mean(data, axis=1)
+    if sample_rate != 16000:
+        data = resample_audio(data, sample_rate, 16000)
+        sample_rate = 16000
+    return data.astype(np.float32), sample_rate
+
 def resample_audio(audio_data, src_sr, target_sr=16000):
     """Linearly resamples numpy arrays to target sample rate without external dependencies."""
     if src_sr == target_sr:
@@ -250,19 +299,15 @@ with col2:
     )
 
 if audio_record:
-    # 1. Parse WAV bytes from web page microphone
+    # 1. Parse raw bytes from web page microphone
     raw_audio_bytes = audio_record['bytes']
-    
-    # Read WAV data
-    data, samplerate = sf.read(io.BytesIO(raw_audio_bytes))
-    if len(data.shape) > 1:
-        data = np.mean(data, axis=1) # Convert to mono
-    
-    # 2. Resample to 16kHz for Whisper
-    audio_16k = resample_audio(data, samplerate, 16000)
     
     # Update UI to thinking
     st.session_state.orb_state = "thinking"
+    
+    # 2. Read and resample audio robustly supporting multiple formats (webm, wav, etc.)
+    with st.spinner("Decoding audio buffer..."):
+        audio_16k, samplerate = load_audio_robust(raw_audio_bytes)
     
     # 3. Transcribe speech using Whisper
     with st.spinner("STT transcribing voice..."):
