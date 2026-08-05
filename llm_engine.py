@@ -92,12 +92,17 @@ def get_latest_news() -> str:
         return f"Error retrieving latest news: {str(e)}"
 
 def search_web(query: str) -> str:
-    """Search the web to get the most current, real-time live web information, facts, stock prices, scores, or news."""
+    """Search the web to get the most current, real-time live web information, facts, stock prices, or news.
+    Accepts either a plain string or a dict with a 'value' key (as sometimes produced by the LLM tool schema).
+    """
+    # If LLM passed a dict, extract the actual query string
+    if isinstance(query, dict):
+        query = query.get('value', '')
     print(f"🔧 [Tool Execution] Searching the web for '{query}'...")
     
     # 1. Fetch real-time stock price if querying for popular stock symbols
     stock_info = ""
-    query_lower = query.lower()
+    query_lower = str(query).lower()
     tickers = {
         "tesla": "TSLA",
         "apple": "AAPL",
@@ -220,8 +225,13 @@ class LLMEngine:
         ]
         if any(kw in text_lower for kw in search_keywords):
             return [search_web]
-            
-        # No tools for general statements/chat
+        # 7. Political leader queries (e.g., president, prime minister, mayor)
+        if any(kw in text_lower for kw in ["president", "prime minister", "minister", "mayor", "governor", "chancellor"]):
+            return [search_web]
+        # Fallback: trigger web search for generic informational queries (questions)
+        if "?" in text_lower or any(q in text_lower for q in ["who", "what", "where", "when", "why", "how", "which", "whom"]):
+            return [search_web]
+        # No tools for pure chat
         return []
         
     def _add_to_memory(self, role: str, content: str = "", tool_calls: list = None):

@@ -2,12 +2,12 @@
 
 [![Project Status](https://img.shields.io/badge/Status-Active-brightgreen)](#)
 [![Python Version](https://img.shields.io/badge/Python-3.11-blue)](#)
-[![STT Engine](https://img.shields.io/badge/STT-Whisper%20(tiny.en)-blueviolet)](#)
+[![STT Engine](https://img.shields.io/badge/STT-Whisper%20(base.en)-blueviolet)](#)
 [![LLM Model](https://img.shields.io/badge/LLM-Ollama%20(Llama%203.2)-orange)](#)
 [![TTS Engine](https://img.shields.io/badge/TTS-Kokoro%20(af__heart)-ff69b4)](#)
 [![License](https://img.shields.io/badge/License-MIT-green)](#)
 
-Jarvis is a low-latency, fully offline, local voice assistant that runs entirely on your machine. It features highly responsive Voice Activity Detection (VAD), fast Speech-to-Text (STT) transcription, Language Model (LLM) orchestration with custom tool calling, real-time Text-to-Speech (TTS) audio streaming, and a gorgeous, Siri-like floating desktop widget that reacts in real-time.
+Jarvis is a low-latency, local-first voice assistant that runs on your machine. It features highly responsive Voice Activity Detection (VAD), fast Speech-to-Text (STT) transcription, local Language Model (LLM) orchestration with custom tool calling (including real-time web search), real-time Text-to-Speech (TTS) audio streaming, and a gorgeous, Siri-like floating desktop widget that reacts in real-time.
 
 ---
 
@@ -34,7 +34,7 @@ graph TD
 
 *   **⚡ Sub-100ms First-Syllable Latency**: Optimized using real-time audio chunk streaming, Whisper VAD-bypass, and fine-tuned Ollama configurations.
 *   **🔮 Siri-Like Desktop Orb**: A borderless, floating UI widget that breathes when listening, sways when thinking, and pulsates/scales dynamically in direct response to the speaker's volume (amplitude) when speaking.
-*   **🔒 100% Offline & Private**: All models (Silero VAD, Whisper STT, Llama LLM, Kokoro TTS) run completely locally on your hardware.
+*   **🔒 Private & Local-First**: All core models (Silero VAD, Whisper STT, Llama LLM, Kokoro TTS) run completely locally on your hardware. If requested, Jarvis can fetch real-time info from the web (fully transparent & opt-in).
 *   **🔄 Configurable Barge-In (Full Duplex)**: Speak over the assistant to interrupt it at any time. Supports `smart` (volume-gated for speakers), `headphones` (fully duplex, open microphone), and `disabled` modes.
 *   **🛡️ Echo & Loop Prevention**: Dynamic echo decay cooldown and amplitude thresholding to prevent the assistant from hearing and transcribing its own speech from speakers.
 *   **🔧 Local Tool Plugins**: Python function plugins (e.g. checking local time, fetching weather info, toggling smart lights, and searching Wikipedia for real-time fact lookups).
@@ -56,8 +56,9 @@ graph TD
 
 Jarvis can now fetch the latest information from the web in real time. When you ask questions that require up‑to‑date data—such as current stock prices, breaking news, or the latest factual information—Jarvis will automatically invoke the **search_web** tool. This tool uses DuckDuckGo's instant answer API and Yahoo Finance for stock data to provide you with concise, current results.
 
-You don't need to do anything extra; simply ask your question, and Jarvis will determine if a live web lookup is appropriate.
-- **Political Leader Queries**: Asking about current presidents, prime ministers, governors, mayors, or other leaders now triggers an automatic live web lookup.
+You don't need to do anything extra; simply ask your question, and Jarvis will determine if a live web lookup is appropriate:
+- **Political Leader Queries**: Asking about current presidents, prime ministers, governors, mayors, or other leaders triggers an automatic live web lookup.
+- **Informational & Question Routing**: Any queries with a question mark (`?`) or starting with common question words (e.g., *who*, *what*, *where*, *when*, *why*, *how*, *which*, *whom*) automatically fall back to live web search to fetch the most up-to-date answer.
 ---
 
 ## 🏎️ Core Latency & Technical Optimizations
@@ -119,6 +120,12 @@ Ensure you have the PortAudio and system text-to-speech libraries installed:
     ```bash
     python main.py --barge-in disabled
     ```
+
+### Customize the STT Whisper Model:
+By default, Jarvis uses the `base.en` Whisper model for transcription. You can specify a different model size (e.g., `tiny.en`, `small.en`, `medium.en`) using the `--stt-model` parameter:
+```bash
+python main.py --stt-model small.en
+```
 
 ### Standalone UI Testing:
 To test the floating desktop widget in isolation (which cycles through visual states and tests the dynamic avatar scaling), run:
