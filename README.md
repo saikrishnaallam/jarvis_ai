@@ -60,7 +60,11 @@ You don't need to do anything extra; simply ask your question, and Jarvis will d
 - **Political Leader Queries**: Asking about current presidents, prime ministers, governors, mayors, or other leaders triggers an automatic live web lookup.
 - **Informational & Question Routing**: Any queries with a question mark (`?`) or starting with common question words (e.g., *who*, *what*, *where*, *when*, *why*, *how*, *which*, *whom*) automatically fall back to live web search to fetch the most up-to-date answer.
 ---
+## 📈 Recent Improvements
 
+- **Deterministic Tool Routing**: Replaced generic tool gating with `get_relevant_tools` to expose only the relevant tool schema, eliminating hallucinations for Llama 3.2.
+- **Enhanced STT Accuracy**: Default Whisper model upgraded to `base.en` and added `--stt-model` CLI flag for selecting larger models.
+- **Live Web Search**: Integrated DuckDuckGo and Yahoo Finance for up‑to‑date information, with special handling for political leader queries.
 ## 🏎️ Core Latency & Technical Optimizations
 
 We implemented several key refinements to ensure the voice agent is highly conversational and fluid:
