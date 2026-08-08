@@ -11,6 +11,12 @@ Jarvis is a low-latency, local-first voice assistant that runs on your machine. 
 
 ---
 
+## 📜 Changelog
+
+- **2026-08-04**: Upgraded Whisper model to `base.en` and added `--stt-model` flag.
+- **2026-08-04**: Implemented deterministic `get_relevant_tools` to eliminate tool hallucinations.
+- **2026-08-04**: Added live web search with DuckDuckGo/Yahoo Finance and political leader query support.
+
 ## 🛠️ Architecture & Pipeline Flow
 
 The system operates as an asynchronous, half-duplex voice pipeline designed to prevent acoustic echo feedback and maximize real-time streaming performance.
