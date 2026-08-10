@@ -23,19 +23,34 @@ Jarvis is a low-latency, local-first voice assistant that runs on your machine. 
 
 ## 🛠️ Architecture & Pipeline Flow
 
-The system operates as an asynchronous, half-duplex voice pipeline designed to prevent acoustic echo feedback and maximize real-time streaming performance.
+Jarvis uses a high-performance, asynchronous pipeline engineered for low latency and smart echo prevention.
+
+### How Data Flows (Step-by-Step)
+
+1. **🎙️ Speech Capture**: Microphone raw audio is processed by **Silero VAD** to detect speech boundaries and filter out silence.
+2. **👂 Speech-to-Text (STT)**: Endpointed speech buffers are transcribed into text using **faster-whisper**.
+3. **🧠 Intelligence & Tools**: **Ollama (Llama 3.2)** processes the prompt. If real-time info is needed (stocks, news, weather, web search), Python tools execute and return data to the LLM.
+4. **🔊 Text-to-Speech (TTS)**: Response text is streamed sentence-by-sentence to **Kokoro TTS** for immediate audio generation.
+5. **🔮 Animation & Echo Lock**: Audio output drives real-time scaling on the **Desktop Orb Widget** while dynamically locking the mic to prevent acoustic echo feedback.
 
 ```mermaid
-graph TD
-    A[🎙️ Microphone] -->|Audio Chunks| B(VAD Pipeline: Silero VAD)
-    B -->|Endpointed Speech| C(STT Engine: faster-whisper)
-    C -->|User Text| D(LLM Engine: Ollama / Llama 3.2)
-    D -->|Tool Call| E{Execute Local Python Tool}
-    E -->|Tool Output| D
-    D -->|Streamed Sentences| F(TTS Engine: Kokoro TTS)
-    F -->|Synthesized Audio| G[🔊 Speaker Playback]
-    G -->|Mute/Lock Signal| B
-    G -->|Volume Amplitude| H[🔮 Desktop Orb Widget]
+flowchart LR
+    subgraph Input ["1. Input Stage"]
+        A[🎙️ Microphone] -->|Audio Chunks| B[⚡ Silero VAD]
+        B -->|Audio Buffer| C[👂 faster-whisper STT]
+    end
+
+    subgraph Core ["2. Intelligence Stage"]
+        C -->|User Text| D[🧠 Ollama / Llama 3.2]
+        D <-->|Call / Return| E[🛠️ Python Tools / Live Search]
+    end
+
+    subgraph Output ["3. Output Stage"]
+        D -->|Text Stream| F[🔊 Kokoro TTS]
+        F -->|Audio Output| G[📢 Speakers]
+        G -.->|Volume Amplitude| H[🔮 Desktop Orb Widget]
+        G -.->|Echo Lock| B
+    end
 ```
 
 ---
