@@ -1,45 +1,14 @@
-# 🎙️ Jarvis: Next-Gen Local Voice AI Assistant
+# 🎙️ Jarvis: Low-Latency Local Voice AI Assistant
 
 [![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg?style=for-the-badge)](#)
 [![Python Version](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](#)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey.svg?style=for-the-badge&logo=apple&logoColor=white)](#)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-success.svg?style=for-the-badge)](#)
 [![Latency](https://img.shields.io/badge/Latency-%3C280ms-blueviolet.svg?style=for-the-badge)](#)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-success.svg?style=for-the-badge)](#)
 [![Hardware Acceleration](https://img.shields.io/badge/Hardware-Apple%20MPS%20%7C%20NVIDIA%20CUDA-blue.svg?style=for-the-badge)](#)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](#)
 
-> **Sub-280ms latency. Zero cloud dependencies. Complete data privacy.**  
-> Jarvis is an ultra-fast, local-first voice AI assistant designed to run **100% on your machine**. Powered by edge Voice Activity Detection (VAD), faster-whisper Speech-to-Text (STT), deterministic local LLM orchestration with real-time web search & stock market tools, streaming Kokoro Text-to-Speech (TTS), and a floating animated Siri-like desktop orb widget.
-
----
-
-## ✨ Key Feature Highlights
-
-```
-+-----------------------------------------------------------------------------------+
-|  🔒 100% Local & Private     |  ⚡ Sub-280ms Latency     |  🔮 Siri-Like Desktop Orb |
-|  Runs entirely on-device;    |  Real-time audio streaming|  Floating animated UI with|
-|  zero cloud API data leaks.  |  with instant sentence TTS|  volume-reactive visuals. |
-+-----------------------------------------------------------------------------------+
-|  🔄 Smart Barge-In           |  🌐 Live Web & Tools      |  🚀 Hardware Accelerated  |
-|  Interrupt mid-speech; RMS   |  Real-time Yahoo Finance, |  Auto-accelerated on Apple|
-|  volume echo-suppression.    |  DuckDuckGo & RSS news.   |  Silicon MPS & NVIDIA CUDA|
-+-----------------------------------------------------------------------------------+
-```
-
----
-
-## 📊 Feature Comparison Matrix
-
-| Feature | 🎙️ **Jarvis (Local AI)** | 🍏 **Apple Siri** | 🔊 **Amazon Alexa** | ☁️ **ChatGPT Voice** |
-| :--- | :---: | :---: | :---: | :---: |
-| **100% Local & Offline Privacy** | ✅ **Yes** | ❌ Partial | ❌ No | ❌ No |
-| **Zero Subscription Costs / Fees** | ✅ **Yes** | ✅ Free | ✅ Free | ❌ $20+/mo |
-| **Sub-280ms First-Syllable Latency**| ✅ **Yes** | ⚠️ Varies | ⚠️ ~1–2s | ⚠️ ~1.5–3s |
-| **Smart Mid-Speech Barge-In** | ✅ **Yes** | ❌ No | ❌ No | ✅ Yes |
-| **Real-Time Web Search & Stocks** | ✅ **Yes** | ⚠️ Basic | ⚠️ Basic | ✅ Yes |
-| **Deterministic Tool Keyword Routing**| ✅ **Yes** | ❌ No | ❌ Custom Skills | ⚠️ Complex |
-| **Floating Animated Desktop Orb** | ✅ **Yes** | ❌ No | ❌ No | ❌ No |
+> **Jarvis** is a low-latency, privacy-first voice assistant engineered to run **100% locally** on consumer desktop hardware. Combining edge Voice Activity Detection (VAD), CTranslate2-accelerated Speech-to-Text (STT), deterministic local LLM orchestration with live web search & stock market tools, streaming Kokoro Text-to-Speech (TTS), and a floating animated Siri-like desktop orb widget.
 
 ---
 
@@ -63,16 +32,108 @@ Ensure your local [Ollama](https://ollama.com/) service is running:
 ollama pull llama3.2
 ```
 
-### Step 3: Launch Jarvis
+### Step 3: Launch Assistant
 ```bash
 python main.py
 ```
 
 ---
 
-## 🔮 Animated Siri-Like Desktop Orb UI
+## 📐 System Architecture & Data Flow
 
-Jarvis includes a borderless, floating desktop orb widget built with Tkinter that dynamically adapts its visual state based on system processing:
+Jarvis uses an asynchronous, multi-threaded event-driven pipeline to stream audio without dropping microphone frames or incurring context loading delays.
+
+### 1. High-Level Data Pipeline
+```mermaid
+flowchart LR
+    subgraph Input ["1. Speech Input"]
+        A[🎙️ Microphone] -->|32ms Audio Frames| B[⚡ Silero VAD]
+        B -->|Endpointed Speech| C[👂 faster-whisper STT]
+    end
+
+    subgraph Intelligence ["2. Local Intelligence & Tools"]
+        C -->|Transcribed Text| D[🧠 Ollama / Llama 3.2]
+        D <-->|Function Execution| E[🛠️ Local Tools / Live Web]
+    end
+
+    subgraph Output ["3. Streaming Audio Output"]
+        D -->|Sentence Stream| F[🔊 Kokoro TTS]
+        F -->|Audio Segments| G[📢 Speakers]
+        G -.->|RMS Volume Amplitude| H[🔮 Desktop Orb UI]
+        G -.->|Echo Lock| B
+    end
+```
+
+### 2. Async Queue Sequence & Thread Communication
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Mic as 🎙️ Mic (PortAudio)
+    participant VAD as ⚡ AudioPipeline (Silero)
+    participant STT as 👂 STTEngine (Whisper)
+    participant LLM as 🧠 LLMEngine (Ollama)
+    participant TTS as 🔊 TTSEngine (Kokoro)
+    participant Spk as 📢 Speaker (PortAudio)
+    participant UI as 🔮 UIEngine (Tkinter)
+
+    Mic->>VAD: Push 32ms float32 chunk (raw_audio_queue)
+    VAD->>VAD: Evaluate probability (>0.5 speech)
+    VAD->>STT: Endpointed audio buffer (speech_buffer_queue)
+    VAD->>UI: set_state("THINKING")
+    STT->>STT: Transcribe async (CTranslate2 int8/fp16)
+    STT->>LLM: Transcribed user string (text_queue)
+    LLM->>LLM: Stream response & match punctuation regex
+    LLM->>TTS: Sentence string (tts_queue)
+    TTS->>TTS: Synthesize Kokoro PCM array
+    TTS->>Spk: Audio PCM array (audio_playback_queue)
+    Spk->>UI: set_state("SPEAKING") & set_amplitude(rms)
+    Spk->>VAD: Adaptive Echo Lock (mic amplitude thresholding)
+```
+
+---
+
+## 🧩 Module Interfaces & Queue Buffer Map
+
+Jarvis divides responsibilities across specialized engine classes connected by thread-safe `asyncio.Queue` buffers:
+
+```
+[PortAudio Mic] ---> (raw_audio_queue) ---> [AudioPipeline / Silero VAD]
+                                                     |
+                                            (speech_buffer_queue)
+                                                     |
+                                                     v
+                                          [STTEngine / Whisper]
+                                                     |
+                                                (text_queue)
+                                                     |
+                                                     v
+                                          [LLMEngine / Ollama]
+                                                     |
+                                                (tts_queue)
+                                                     |
+                                                     v
+                                          [TTSEngine / Kokoro]
+                                                     |
+                                           (audio_playback_queue)
+                                                     |
+                                                     v
+                                           [PortAudio Speaker]
+```
+
+* **[main.py](main.py)**: System orchestrator. Manages thread boundaries, global signal handlers (`SIGINT`/`SIGTERM`), and main-thread Tkinter Cocoa GUI execution.
+* **[audio_engine.py](audio_engine.py)**: Manages PyAudio microphone input streams, Silero VAD edge processing, RMS volume calculation, and acoustic echo gating (`barge_in_mode`).
+* **[stt_engine.py](stt_engine.py)**: Asynchronously transcribes speech audio buffers using `faster-whisper` (CTranslate2 `int8`/`fp16`) with VAD filter bypass (`vad_filter=False`).
+* **[llm_engine.py](llm_engine.py)**: Ollama chat orchestrator with memory buffer pruning (20 messages max), regex sentence chunking, and deterministic tool routing.
+* **[tts_engine.py](tts_engine.py)**: Synthesizes high-quality speech using Kokoro TTS (MPS/CUDA accelerated) and streams audio segments to PyAudio playback queues.
+* **[ui_engine.py](ui_engine.py)**: Floating Tkinter desktop widget rendering visual states (`IDLE`, `LISTENING`, `THINKING`, `SPEAKING`) with drag-and-drop movement.
+* **[test_jarvis.py](test_jarvis.py)**: Automated unit test suite covering tool keyword routing, memory pruning, and parameter extraction.
+* **[Dockerfile](Dockerfile)**: Linux container configuration exposing host audio devices (`/dev/snd`).
+
+---
+
+## 🔮 Animated Desktop Orb UI
+
+Jarvis features a borderless, floating desktop orb widget built with Tkinter that dynamically adapts its visual state based on system processing:
 
 ```
   +-----------------------------------------------------------------------+
@@ -91,29 +152,17 @@ Jarvis includes a borderless, floating desktop orb widget built with Tkinter tha
 
 ---
 
-## 🛠️ End-to-End Pipeline Architecture
+## 📊 Feature Comparison Matrix
 
-Jarvis uses an asynchronous, multi-threaded pipeline designed to stream audio without dropping microphone frames.
-
-```mermaid
-flowchart LR
-    subgraph Input ["1. Speech Input"]
-        A[🎙️ Microphone] -->|32ms Audio Frames| B[⚡ Silero VAD]
-        B -->|Endpointed Speech| C[👂 faster-whisper STT]
-    end
-
-    subgraph Intelligence ["2. Intelligence & Tools"]
-        C -->|Transcribed Text| D[🧠 Ollama / Llama 3.2]
-        D <-->|Function Execution| E[🛠️ Local Tools / Live Web]
-    end
-
-    subgraph Output ["3. Streaming Audio Output"]
-        D -->|Sentence Stream| F[🔊 Kokoro TTS]
-        F -->|Audio Segments| G[📢 Speakers]
-        G -.->|RMS Volume Amplitude| H[🔮 Desktop Orb UI]
-        G -.->|Echo Lock| B
-    end
-```
+| Feature | 🎙️ **Jarvis (Local AI)** | 🍏 **Apple Siri** | 🔊 **Amazon Alexa** | ☁️ **ChatGPT Voice** |
+| :--- | :---: | :---: | :---: | :---: |
+| **100% Local & Offline Privacy** | ✅ **Yes** | ❌ Partial | ❌ No | ❌ No |
+| **Zero Subscription Costs / Fees** | ✅ **Yes** | ✅ Free | ✅ Free | ❌ $20+/mo |
+| **Sub-280ms First-Syllable Latency**| ✅ **Yes** | ⚠️ Varies | ⚠️ ~1–2s | ⚠️ ~1.5–3s |
+| **Smart Mid-Speech Barge-In** | ✅ **Yes** | ❌ No | ❌ No | ✅ Yes |
+| **Real-Time Web Search & Stocks** | ✅ **Yes** | ⚠️ Basic | ⚠️ Basic | ✅ Yes |
+| **Deterministic Tool Keyword Routing**| ✅ **Yes** | ❌ No | ❌ Custom Skills | ⚠️ Complex |
+| **Floating Animated Desktop Orb** | ✅ **Yes** | ❌ No | ❌ No | ❌ No |
 
 ---
 
@@ -133,7 +182,7 @@ Jarvis performs deterministic keyword pre-filtering before passing tools to Olla
 
 ---
 
-## ⚙️ CLI Launch Options & Flags
+## ⚙️ CLI Launch Options & Execution Modes
 
 ```bash
 # Default Smart Mode (RMS volume-gated acoustic echo lock)
@@ -160,19 +209,6 @@ python -m unittest test_jarvis.py
 docker build -t local-voice-ai .
 docker run -it --device /dev/snd --network host local-voice-ai
 ```
-
----
-
-## 📁 Codebase Directory Breakdown
-
-* **[main.py](main.py)**: System orchestrator. Initializes worker loops, manages global signal handlers (`SIGINT`/`SIGTERM`), and drives main-thread Cocoa GUI loops.
-* **[audio_engine.py](audio_engine.py)**: Handles PyAudio microphone streams, Silero VAD edge processing, RMS volume calculation, and acoustic echo gating.
-* **[stt_engine.py](stt_engine.py)**: Asynchronously transcribes speech audio buffers using `faster-whisper` (CTranslate2 `int8`/`fp16`) with VAD filter bypass.
-* **[llm_engine.py](llm_engine.py)**: Ollama chat orchestrator with memory buffer pruning (20 messages max), regex sentence chunking, and deterministic tool routing.
-* **[tts_engine.py](tts_engine.py)**: Synthesizes high-quality speech using Kokoro TTS (MPS/CUDA accelerated) and streams audio segments to PyAudio speakers.
-* **[ui_engine.py](ui_engine.py)**: Floating Tkinter desktop widget rendering visual states (`IDLE`, `LISTENING`, `THINKING`, `SPEAKING`) with drag-and-drop movement.
-* **[test_jarvis.py](test_jarvis.py)**: Automated unit test suite covering tool keyword routing, memory pruning, and parameter extraction.
-* **[Dockerfile](Dockerfile)**: Linux container configuration exposing host audio devices (`/dev/snd`).
 
 ---
 
