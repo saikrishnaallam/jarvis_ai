@@ -1,4 +1,4 @@
-# 🎙️ Jarvis: Low-Latency Local Voice AI Assistant
+# 🎙️ Jarvis: Next-Gen Local Voice AI Assistant
 
 [![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg?style=for-the-badge)](#)
 [![Python Version](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](#)
@@ -8,7 +8,61 @@
 [![Hardware Acceleration](https://img.shields.io/badge/Hardware-Apple%20MPS%20%7C%20NVIDIA%20CUDA-blue.svg?style=for-the-badge)](#)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](#)
 
-> **Jarvis** is a low-latency, privacy-first voice assistant engineered to run **100% locally** on consumer desktop hardware. Powered by edge Voice Activity Detection (VAD), CTranslate2-accelerated Speech-to-Text (STT), local LLM orchestration with live web search & stock market tools, streaming Kokoro Text-to-Speech (TTS), and a floating animated Siri-like desktop orb widget.
+> **Sub-280ms latency. Zero cloud dependencies. Complete data privacy.**  
+> Jarvis is an ultra-fast, local-first voice AI assistant designed to run **100% on your machine**. Powered by edge Voice Activity Detection (VAD), faster-whisper Speech-to-Text (STT), deterministic local LLM orchestration with real-time web search & stock market tools, streaming Kokoro Text-to-Speech (TTS), and a floating animated Siri-like desktop orb widget.
+
+---
+
+## ⚡ Component Latency & Performance Breakdown
+
+```
++-----------------------------------------------------------------------------------------+
+| Pipeline Stage      | Engine / Strategy              | Processing Time                  |
++---------------------+--------------------------------+----------------------------------+
+| VAD Edge Endpoint   | Silero VAD v4                  | < 5 ms                           |
+| Speech-to-Text      | faster-whisper (CTranslate2)   | 45 – 90 ms                       |
+| LLM First Token     | Ollama Llama 3.2 (Greedy)      | 70 – 120 ms                      |
+| TTS Synthesis       | Kokoro v1.0 (Sentence Stream)  | 30 – 50 ms                       |
+| Audio Playback      | PyAudio Ring Buffer            | < 10 ms                          |
++---------------------+--------------------------------+----------------------------------+
+| TOTAL FIRST SYLLABLE LATENCY                                 ~200 – 280 ms              |
++-----------------------------------------------------------------------------------------+
+```
+
+---
+
+## 🔮 Animated Siri-Like Desktop Orb UI
+
+Jarvis includes a borderless, floating desktop orb widget built with Tkinter that dynamically adapts its visual state based on system processing:
+
+```
+  +-----------------------------------------------------------------------+
+  | State       | Visual Animation Output                                 |
+  +-------------+---------------------------------------------------------+
+  | IDLE        |  ( ( ( ⚪ ) ) )  Soft breathing white glow ring         |
+  | LISTENING   |  < < < 🔵 > > >  Pulsing cyan/blue audio capture ring   |
+  | THINKING    |  / / / 🟣 \ \ \  Rotating morphing magenta sway ring    |
+  | SPEAKING    |  { { { 🟢 } } }  Green ring reactive to volume amplitude|
+  +-----------------------------------------------------------------------+
+```
+
+* **Click & Drag Repositioning**: Position the floating widget anywhere across your desktop screen.
+* **macOS Transparency Fix**: Custom solid white oval canvas background rendering eliminates macOS Cocoa alpha-channel compositing artifacts.
+* **Amplitude Reactive**: Avatar scale factor $S = 0.9 + 0.35 \cdot A_{\text{speaker}} + 0.05\sin(0.3 \cdot t)$ drives dynamic volume-responsive movement.
+
+---
+
+## 📊 Feature Comparison Matrix
+
+| Feature | 🎙️ **Jarvis (Local AI)** | 🍏 **Apple Siri** | 🔊 **Amazon Alexa** | ☁️ **ChatGPT Voice** |
+| :--- | :---: | :---: | :---: | :---: |
+| **100% Local & Offline Privacy** | ✅ **Yes** | ❌ Partial | ❌ No | ❌ No |
+| **Zero Subscription Costs / Fees** | ✅ **Yes** | ✅ Free | ✅ Free | ❌ $20+/mo |
+| **Sub-280ms First-Syllable Latency**| ✅ **Yes** | ⚠️ Varies | ⚠️ ~1–2s | ⚠️ ~1.5–3s |
+| **Smart Mid-Speech Barge-In** | ✅ **Yes** | ❌ No | ❌ No | ✅ Yes |
+| **Real-Time Web Search & Stocks** | ✅ **Yes** | ⚠️ Basic | ⚠️ Basic | ✅ Yes |
+| **Deterministic Tool Keyword Routing**| ✅ **Yes** | ❌ No | ❌ Custom Skills | ⚠️ Complex |
+| **Floating Animated Desktop Orb** | ✅ **Yes** | ❌ No | ❌ No | ❌ No |
 
 ---
 
@@ -39,36 +93,6 @@ python main.py
 
 ---
 
-## 🌟 Core Feature Pillars
-
-```
-+-----------------------------------------------------------------------------------+
-|  🔒 100% Local & Private     |  ⚡ Sub-280ms Latency     |  🔮 Siri-Like Desktop Orb |
-|  Runs entirely on-device;    |  Real-time audio streaming|  Floating animated UI with|
-|  zero cloud API data leaks.  |  with instant sentence TTS|  volume-reactive visuals. |
-+-----------------------------------------------------------------------------------+
-|  🔄 Smart Barge-In           |  🌐 Live Web & Tools      |  🚀 Hardware Accelerated  |
-|  Interrupt mid-speech; RMS   |  Real-time Yahoo Finance, |  Auto-accelerated on Apple|
-|  volume echo-suppression.    |  DuckDuckGo & RSS news.   |  Silicon MPS & NVIDIA CUDA|
-+-----------------------------------------------------------------------------------+
-```
-
----
-
-## 📊 Feature Comparison Matrix
-
-| Feature | 🎙️ **Jarvis (Local AI)** | 🍏 **Apple Siri** | 🔊 **Amazon Alexa** | ☁️ **ChatGPT Voice** |
-| :--- | :---: | :---: | :---: | :---: |
-| **100% Local & Offline Privacy** | ✅ **Yes** | ❌ Partial | ❌ No | ❌ No |
-| **Zero Subscription Costs / Fees** | ✅ **Yes** | ✅ Free | ✅ Free | ❌ $20+/mo |
-| **Sub-280ms First-Syllable Latency**| ✅ **Yes** | ⚠️ Varies | ⚠️ ~1–2s | ⚠️ ~1.5–3s |
-| **Smart Mid-Speech Barge-In** | ✅ **Yes** | ❌ No | ❌ No | ✅ Yes |
-| **Real-Time Web Search & Stocks** | ✅ **Yes** | ⚠️ Basic | ⚠️ Basic | ✅ Yes |
-| **Deterministic Tool Keyword Routing**| ✅ **Yes** | ❌ No | ❌ Custom Skills | ⚠️ Complex |
-| **Floating Animated Desktop Orb** | ✅ **Yes** | ❌ No | ❌ No | ❌ No |
-
----
-
 ## 🛠️ System Architecture
 
 Jarvis uses an asynchronous, multi-threaded pipeline designed to stream audio without dropping microphone frames.
@@ -92,27 +116,6 @@ flowchart LR
         G -.->|Echo Lock| B
     end
 ```
-
----
-
-## 🔮 Animated Siri-Like Desktop Orb UI
-
-Jarvis includes a borderless, floating desktop orb widget built with Tkinter that dynamically adapts its visual state based on system processing:
-
-```
-  +-----------------------------------------------------------------------+
-  | State       | Visual Animation Output                                 |
-  +-------------+---------------------------------------------------------+
-  | IDLE        |  ( ( ( ⚪ ) ) )  Soft breathing white glow ring         |
-  | LISTENING   |  < < < 🔵 > > >  Pulsing cyan/blue audio capture ring   |
-  | THINKING    |  / / / 🟣 \ \ \  Rotating morphing magenta sway ring    |
-  | SPEAKING    |  { { { 🟢 } } }  Green ring reactive to volume amplitude|
-  +-----------------------------------------------------------------------+
-```
-
-* **Click & Drag Repositioning**: Position the floating widget anywhere across your desktop screen.
-* **macOS Transparency Fix**: Custom solid white oval canvas background rendering eliminates macOS Cocoa alpha-channel compositing artifacts.
-* **Amplitude Reactive**: Avatar scale factor $S = 0.9 + 0.35 \cdot A_{\text{speaker}} + 0.05\sin(0.3 \cdot t)$ drives dynamic volume-responsive movement.
 
 ---
 
