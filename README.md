@@ -1,4 +1,4 @@
-# 🎙️ Jarvis: Low-Latency Local Voice AI Assistant
+# 🎙️ Jarvis: Next-Gen Local Voice AI Assistant
 
 [![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg?style=for-the-badge)](#)
 [![Python Version](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](#)
@@ -13,7 +13,7 @@
 
 ---
 
-## ✨ Key Feature Highlights
+## ✨ Key Product Highlights
 
 ```
 +-----------------------------------------------------------------------------------+
@@ -29,7 +29,7 @@
 
 ---
 
-## ⚡ Component Latency Breakdown
+## ⚡ Component Latency & Performance Breakdown
 
 ```
 +-----------------------------------------------------------------------------------------+
