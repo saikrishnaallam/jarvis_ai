@@ -1,192 +1,227 @@
-# Jarvis: Low-Latency Local Voice AI Assistant 🎙️🤖
 
-[![Project Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)](#)
-[![Python Version](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](#)
-[![STT Engine](https://img.shields.io/badge/STT-faster--whisper%20(base.en)-8A2BE2.svg)](#)
-[![LLM Model](https://img.shields.io/badge/LLM-Ollama%20(Llama%203.2)-FF6F00.svg?logo=ollama&logoColor=white)](#)
-[![TTS Engine](https://img.shields.io/badge/TTS-Kokoro%20(af__heart)-FF69B4.svg)](#)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](#)
+                    ____  ___  ____  _  _  ____  ___
+                   (_  _)/ _ \(  _ \( \/ )(_  _)/ __)
+                  .-_)(  )___/ )   / \  /  _)(_ \__ \
+                  \____)(__)  (_)\_)  \/  (____)(___/
 
-**Jarvis** is a low-latency, privacy-focused, local-first voice assistant engineered to run 100% locally on your machine. Featuring ultra-fast Voice Activity Detection (VAD), high-accuracy Speech-to-Text (STT), deterministic local LLM orchestration with live web search and tool execution, real-time streaming Text-to-Speech (TTS), and a floating animated Siri-like desktop orb widget.
+                   LOCAL VOICE AI ASSISTANT v1.0
+                   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+              "Your own private AI, running on your machine."
 
----
 
-## ⚡ Quick Start (3 Steps)
+========================================================================
+  WHAT IS THIS?
+========================================================================
 
-### 1. Install System Dependencies & Python Requirements
-```bash
-# macOS (via Homebrew)
-brew install portaudio espeak-ng
+  Jarvis is a voice assistant that runs entirely on your local machine.
+  No cloud. No API keys for core functionality. No data leaves your
+  computer. You talk, it listens, it thinks, it speaks back.
 
-# Linux (Debian/Ubuntu)
-sudo apt-get update && sudo apt-get install -y portaudio19-dev alsa-utils libasound2-dev espeak-ng
+  It chains together four open-source engines in a tight loop:
 
-# Install Python requirements
-pip install -r requirements.txt
-```
+      Microphone --> Silero VAD --> faster-whisper --> Ollama --> Kokoro TTS --> Speaker
+         |                                                                       |
+         +------- adaptive echo gate (prevents self-hearing loop) <--------------+
 
-### 2. Pull Local LLM Model (Ollama)
-Ensure [Ollama](https://ollama.com/) is installed and running locally, then pull the lightweight Llama 3.2 model:
-```bash
-ollama pull llama3.2
-```
+  The whole pipeline targets sub-100ms first-syllable latency on
+  Apple Silicon and NVIDIA GPU hardware.
 
-### 3. Launch Jarvis!
-```bash
-python main.py
-```
 
----
+========================================================================
+  WHAT CAN IT DO?
+========================================================================
 
-## 🛠️ Architecture & Audio Pipeline
+  * Listen to you via microphone with real-time voice activity detection
+  * Transcribe your speech locally using faster-whisper (base.en model)
+  * Think and respond using Ollama with Llama 3.2 (runs locally)
+  * Speak responses back using Kokoro TTS with hardware acceleration
+  * Show a floating animated desktop orb (Siri-like, drag anywhere)
+  * Interrupt it mid-sentence (barge-in) without breaking the pipeline
+  * Suppress echo loops so it doesn't transcribe its own voice
 
-Jarvis runs as an asynchronous, event-driven pipeline designed to minimize end-to-end latency while eliminating feedback loops and echo self-transcription.
+  When it needs live data, it can also:
 
-```mermaid
-flowchart LR
-    subgraph Input ["1. Input Pipeline"]
-        A[🎙️ Microphone Input] -->|PCM Audio Chunks| B[⚡ Silero VAD]
-        B -->|Speech Buffers| C[👂 faster-whisper STT]
-    end
+    - Pull real-time stock prices .... Yahoo Finance (TSLA, AAPL, etc.)
+    - Search the web ................ DuckDuckGo
+    - Get breaking news ............. Google News RSS
+    - Look up facts ................. Wikipedia
+    - Check the weather ............. OpenWeather API
+    - Control smart lights .......... Smart Home REST API
+    - Tell you the time ............. System clock
 
-    subgraph Intelligence ["2. Orchestration & Intelligence"]
-        C -->|Transcribed Text| D[🧠 Ollama / Llama 3.2]
-        D <-->|Function Calling| E[🛠️ Python Tools / Live Search]
-    end
 
-    subgraph Output ["3. Output & Feedback"]
-        D -->|Sentence Stream| F[🔊 Kokoro TTS]
-        F -->|Audio Segments| G[📢 Speaker Output]
-        G -.->|RMS Amplitude| H[🔮 Desktop Orb Widget]
-        G -.->|Adaptive Echo Lock| B
-    end
-```
+========================================================================
+  GETTING STARTED
+========================================================================
 
-### Data Flow Breakdown
-1. **🎙️ Speech Detection & Endpointing**: Microphone input is constantly evaluated by **Silero VAD** for sub-millisecond edge endpointing, isolating human speech from ambient background noise.
-2. **👂 Async Speech Transcription**: Completed speech segments are passed to **faster-whisper** for low-latency asynchronous transcription.
-3. **🧠 Intelligence & Tool Routing**: **Ollama (Llama 3.2)** processes the user prompt. Relevant local Python tools (real-time DuckDuckGo search, Yahoo Finance stocks, Google News RSS, weather, Wikipedia, time, smart home) are invoked deterministically.
-4. **🔊 Streaming Audio Synthesis**: **Kokoro TTS** synthesizes text chunks sentence-by-sentence into low-latency audio buffers, instantly queued for speaker playback via PyAudio.
-5. **🔮 Dynamic Visuals & Echo Protection**: Speaker audio drives real-time scaling on the floating **Desktop Orb Widget** while maintaining adaptive echo gating to suppress self-hearing.
+  Prerequisites:
 
----
+    - Python 3.11 or newer
+    - Ollama (https://ollama.com) installed and running
+    - PortAudio and espeak-ng system libraries
 
-## 🌟 Core Features & Highlights
+  Step 1: Install system dependencies
 
-* **⚡ Sub-100ms First-Syllable Latency**: Optimized background audio chunking, sentence-level regex streaming, Whisper VAD bypass, and greedy LLM decoding provide near-instant responses.
-* **🔮 Animated Siri-Like Desktop Orb**: Borderless floating Tkinter UI widget that breathes when listening, sways when thinking, and dynamically scales in response to speaker amplitude. Drag and drop anywhere on your desktop.
-* **🔒 100% Private & Local-First**: Core speech processing and language models run entirely locally. Auto-detects hardware acceleration (`MPS` for Apple Silicon, `CUDA` for NVIDIA GPUs). Web access is strictly transparent and tool-driven.
-* **🔄 Flexible Barge-In Modes**: Interrupt the assistant seamlessly mid-speech. Supports `smart` (RMS volume-gated), `headphones` (full-duplex open mic), and `disabled` (half-duplex mic lock).
-* **🛡️ Adaptive Echo & Loop Suppression**: Dynamic decay cooldown (`0.35s`) and amplitude gating prevent the assistant from transcribing its own output through microphone spillover.
-* **🔧 Deterministic Tool Routing**: Tool execution layer eliminates hallucinated tool calls with fast pre-filtering for live search, financial market data, breaking news, weather, Wikipedia, smart home controls, and system utilities.
+    macOS:
+      $ brew install portaudio espeak-ng
 
----
+    Linux (Debian/Ubuntu):
+      $ sudo apt-get update
+      $ sudo apt-get install -y portaudio19-dev alsa-utils \
+          libasound2-dev espeak-ng
 
-## 🌐 Real-Time Web & Tool Integration
+  Step 2: Install Python packages
 
-Jarvis intelligently routes queries to local tools when real-time data or system interaction is required:
+      $ pip install -r requirements.txt
 
-| Capability | Example Query | Tool Invoked | Data Source / Provider |
-| :--- | :--- | :--- | :--- |
-| **📈 Real-Time Stocks** | *"What is Tesla's stock price today?"* | `search_web` | Yahoo Finance API (`TSLA`, `AAPL`, `MSFT`, `GOOGL`, etc.) |
-| **🌐 Live Web Search** | *"Who won the game today?"* | `search_web` | DuckDuckGo Search Engine API |
-| **🏛️ Political & Current Leaders** | *"Who is the prime minister of Canada?"* | `search_web` | Real-time Search Engine |
-| **📰 Breaking Global News** | *"What is the latest headline news?"* | `get_latest_news` | Google News RSS Feed |
-| **📚 Fact & Knowledge Lookup** | *"Tell me about Quantum Computing"* | `search_wikipedia` | Wikipedia REST API |
-| **☀️ Live Weather** | *"What's the weather in Tokyo?"* | `get_weather` | OpenWeather API |
-| **💡 Smart Home Control** | *"Turn off the living room lights"* | `toggle_smart_lights` | Smart Home REST API |
-| **⏰ System Utilities** | *"What time is it right now?"* | `get_current_time` | System Clock |
+  Step 3: Pull the LLM model
 
----
+      $ ollama pull llama3.2
 
-## 📁 Codebase Architecture & Files
+  Step 4: Run it
 
-* **[main.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/main.py)**: Orchestrator entry point. Initializes asynchronous worker loops, manages global signal handlers (`SIGINT`/`SIGTERM`), and handles main-thread Cocoa UI requirements.
-* **[audio_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/audio_engine.py)**: Manages PyAudio microphone input stream, executes Silero VAD edge processing, calculates RMS volume levels, and manages adaptive echo-suppression gating.
-* **[stt_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/stt_engine.py)**: Consumes speech audio buffers asynchronously from the VAD queue and produces transcribed text via `faster-whisper`.
-* **[llm_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/llm_engine.py)**: Handles conversation memory history, prompt engineering, regex sentence chunking, and deterministic function tool calling via Ollama API.
-* **[tts_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/tts_engine.py)**: Synthesizes text into high-quality speech using Kokoro TTS (MPS/CUDA hardware-accelerated) and streams audio segments to PyAudio speakers with real-time amplitude calculations.
-* **[ui_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/ui_engine.py)**: Floating Tkinter desktop widget rendering dynamic visual states (listening, thinking, speaking) with macOS alpha channel fixes and click-and-drag movement.
-* **[test_jarvis.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/test_jarvis.py)**: Unit test suite covering deterministic tool keyword routing, memory buffer pruning, and tool parameter extraction.
-* **[Dockerfile](file:///Users/saikrishnaallam/Desktop/jarvis_ai/Dockerfile)**: Linux container configuration for deploying Jarvis with host audio device passthrough.
-* **[requirements.txt](file:///Users/saikrishnaallam/Desktop/jarvis_ai/requirements.txt)**: Managed Python library dependencies.
-* **[.gitignore](file:///Users/saikrishnaallam/Desktop/jarvis_ai/.gitignore)**: Git ignore rules for bytecode, virtual environments, and OS metadata files.
+      $ python main.py
 
----
+  That's it. Start talking.
 
-## 🏎️ Key Latency & Performance Optimizations
 
-* **🎙️ Background Audio Chunk Streaming**: Kokoro TTS generation executes in a background thread and dispatches synthesized PCM frames via `loop.call_soon_threadsafe`, reducing audio output startup delay to under **50ms**.
-* **🔇 Whisper VAD Bypass (`vad_filter=False`)**: Relying on primary Silero VAD endpoints for initial speech capture allows redundant second-pass filtering in Whisper to be disabled, eliminating **100–300ms** of transcription overhead.
-* **⏳ Aggressive Silence Endpointing**: Silence threshold set to `0.35s` (down from `1.2s`), allowing transcription to initiate instantly upon speech completion.
-* **🎨 macOS Cocoa Canvas Transparency Fix**: Standard transparent Tkinter canvases on macOS composite alpha channels against transparent windows. Resolved by rendering a dynamic white background oval (`canvas.create_oval`) matching the moving avatar's exact scale.
-* **♻️ Tkinter Garbage Collection Preservation**: Prevents Python GC sweeps from dropping dynamic `PhotoImage` frame references by binding image instances directly to the canvas element (`self.canvas.image = self.avatar_img`).
-* **⚡ Greedy LLM Inference**: Configured Ollama parameters with greedy decoding (`temperature: 0.0`), concise context (`num_ctx: 1024`), and bounded output length (`num_predict: 50`) to minimize generation latency.
+========================================================================
+  FILES
+========================================================================
 
----
+  jarvis_ai/
+  |
+  |-- main.py              Main entry point. Starts the async pipeline,
+  |                        handles signals (SIGINT/SIGTERM), runs UI.
+  |
+  |-- audio_engine.py      Microphone capture via PyAudio. Runs Silero
+  |                        VAD for speech detection. Manages echo gate.
+  |
+  |-- stt_engine.py        Speech-to-text via faster-whisper. Consumes
+  |                        audio buffers from VAD queue.
+  |
+  |-- llm_engine.py        Chat engine via Ollama API. Manages memory,
+  |                        prompt engineering, sentence chunking, and
+  |                        deterministic tool/function calling.
+  |
+  |-- tts_engine.py        Text-to-speech via Kokoro. Hardware accel
+  |                        on MPS (Apple) and CUDA (NVIDIA). Streams
+  |                        audio segments with amplitude tracking.
+  |
+  |-- ui_engine.py         Floating desktop orb widget in Tkinter.
+  |                        Animates: breathing (listen), swaying
+  |                        (think), scaling (speak). Drag to move.
+  |
+  |-- test_jarvis.py       Unit tests for tool routing, memory
+  |                        pruning, and parameter extraction.
+  |
+  |-- requirements.txt     Python dependencies.
+  |-- Dockerfile           Docker config for Linux audio passthrough.
+  |-- .gitignore           Ignores bytecode, venvs, OS junk.
 
-## 🚀 Usage & Configuration Options
 
-### Launch Modes
-```bash
-# Smart Mode (Default - RMS volume-gated barge-in for speakers)
-python main.py
+========================================================================
+  COMMAND LINE OPTIONS
+========================================================================
 
-# Headphones Mode (Recommended for headphones - full-duplex open mic)
-python main.py --barge-in headphones
+  Basic usage:
 
-# Disabled Mode (Traditional half-duplex mic lock during speech output)
-python main.py --barge-in disabled
-```
+      $ python main.py
 
-### Custom STT Model Selection
-Choose from available Whisper model sizes (`tiny.en`, `base.en`, `small.en`, `medium.en`):
-```bash
-python main.py --stt-model small.en
-```
+  Barge-in modes:
 
-### Standalone Desktop Widget Testing
-Test UI animations, state transitions, and click-and-drag interactions independently:
-```bash
-python ui_engine.py
-```
+      $ python main.py --barge-in smart       # default, volume-gated
+      $ python main.py --barge-in headphones   # full duplex, open mic
+      $ python main.py --barge-in disabled     # half duplex, mic lock
 
-### Automated Unit Test Suite
-Run the test suite to verify tool routing and memory management logic:
-```bash
-python -m unittest test_jarvis.py
-```
+  Change the Whisper model (tiny.en / base.en / small.en / medium.en):
 
-### Containerized Deployment (Docker)
-Build and run the assistant container with host audio driver access (Linux):
-```bash
-docker build -t local-voice-ai .
-docker run -it --device /dev/snd --network host local-voice-ai
-```
+      $ python main.py --stt-model small.en
 
----
+  Test the desktop orb widget by itself:
 
-## 💻 Hardware Requirements
+      $ python ui_engine.py
 
-| Component | Minimum | Recommended |
-| :--- | :--- | :--- |
-| **RAM** | 8 GB | 16 GB+ (Apple Silicon or NVIDIA GPU) |
-| **Storage** | 5 GB available | 10 GB (for multiple Whisper/Ollama models) |
-| **Microphone** | Built-in mic | Dedicated directional USB mic or headset |
-| **OS** | macOS 12+ / Linux | macOS 14+ (Apple Silicon M-series recommended) |
+  Run unit tests:
 
----
+      $ python -m unittest test_jarvis.py
 
-## 📜 Version History & Changelog
+  Docker (Linux only, needs host audio access):
 
-* **2026-08-04**: Upgraded default Whisper model to `base.en` and introduced the `--stt-model` CLI flag.
-* **2026-08-04**: Implemented deterministic `get_relevant_tools` routing in `llm_engine.py` to eliminate tool calling hallucinations in Ollama / Llama 3.2.
-* **2026-08-04**: Integrated real-time web search (`search_web`) via DuckDuckGo, stock lookups via Yahoo Finance, and live breaking news via Google News RSS (`get_latest_news`).
-* **2026-08-04**: Added automatic web search routing for political leader queries and real-time facts.
-* **2026-08-04**: Enhanced Desktop Orb UI with drag-to-repositioning, macOS Cocoa background transparency fix, MPS/CUDA auto-acceleration for Kokoro TTS, and conversation memory buffer pruning.
+      $ docker build -t local-voice-ai .
+      $ docker run -it --device /dev/snd --network host local-voice-ai
 
----
 
-## 📄 License
+========================================================================
+  HOW IT STAYS FAST
+========================================================================
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+  - Kokoro TTS runs in a background thread; audio chunks dispatch
+    via loop.call_soon_threadsafe. Startup delay: ~50ms.
+
+  - Whisper's internal VAD filter is OFF (vad_filter=False). We
+    already did VAD with Silero, so the second pass is redundant.
+    Saves 100-300ms per transcription.
+
+  - Silence endpoint is set to 0.35 seconds (down from 1.2s).
+    Transcription starts the instant you stop talking.
+
+  - LLM runs greedy (temperature=0.0, num_ctx=1024, num_predict=50).
+    Fast, deterministic, no sampling overhead.
+
+  - macOS transparency hack: Tkinter canvas alpha compositing is
+    broken on Cocoa. Fixed with a dynamic white background oval
+    that tracks the avatar's exact scale.
+
+  - PhotoImage GC fix: Python's garbage collector drops Tkinter
+    image refs. Solved by pinning them to the canvas widget.
+
+
+========================================================================
+  HARDWARE
+========================================================================
+
+  Minimum:
+    - 8 GB RAM
+    - 5 GB disk space
+    - Any microphone
+    - macOS 12+ or Linux
+
+  Recommended:
+    - 16 GB+ RAM with Apple Silicon or NVIDIA GPU
+    - 10 GB disk (room for multiple Whisper/Ollama models)
+    - Dedicated USB microphone or headset
+    - macOS 14+ on M-series chip
+
+
+========================================================================
+  CHANGELOG
+========================================================================
+
+  2026-08-04  Upgraded default Whisper model to base.en. Added
+              --stt-model CLI flag for model selection.
+
+  2026-08-04  Implemented deterministic get_relevant_tools routing
+              in llm_engine.py. No more hallucinated tool calls.
+
+  2026-08-04  Added real-time web search (DuckDuckGo), stock quotes
+              (Yahoo Finance), and breaking news (Google News RSS).
+
+  2026-08-04  Auto-route political/leader queries to web search.
+
+  2026-08-04  Desktop orb: drag-to-reposition, macOS transparency
+              fix, MPS/CUDA auto-acceleration, memory pruning.
+
+
+========================================================================
+  LICENSE
+========================================================================
+
+  MIT License. See LICENSE file for details.
+
+
+========================================================================
+
+  "It's not about the algorithm. It's about the latency."
+
+========================================================================
