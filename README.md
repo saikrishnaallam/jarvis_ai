@@ -1,18 +1,41 @@
+<div align="center">
+
+<img src="avatar.png" width="160" alt="Jarvis Desktop Orb" />
+
 # 🎙️ Jarvis: Real-Time On-Device Voice AI Assistant
 
-[![Status](https://img.shields.io/badge/Status-Active-brightgreen.svg)](#)
-[![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB.svg?logo=python&logoColor=white)](#)
-[![STT](https://img.shields.io/badge/STT-faster--whisper%20(base.en)-8A2BE2.svg)](#)
-[![LLM](https://img.shields.io/badge/LLM-Ollama%20(Llama%203.2)-FF6F00.svg?logo=ollama&logoColor=white)](#)
-[![TTS](https://img.shields.io/badge/TTS-Kokoro%20(af__heart)-FF69B4.svg)](#)
-[![Hardware](https://img.shields.io/badge/Acceleration-Apple%20MPS%20%7C%20CUDA-blue.svg)](#)
-[![Latency](https://img.shields.io/badge/Latency-%3C280ms-blueviolet.svg)](#)
-[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-success.svg)](#)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](#)
+### Ultra-Low Latency • 100% Private • Local-First Intelligence
 
-> **Jarvis** is a low-latency, 100% local voice assistant designed for natural, fluid spoken conversations. Operating entirely on edge consumer hardware (macOS Apple Silicon or Linux CUDA/CPU), Jarvis integrates neural Voice Activity Detection (VAD), CTranslate2-accelerated Speech-to-Text (STT), deterministic local LLM orchestration with live web search and market data, streaming Kokoro Text-to-Speech (TTS), and an audio-reactive desktop orb widget.
+[![Status](https://img.shields.io/badge/Status-Active-brightgreen.svg?style=for-the-badge)](#)
+[![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%2B-3776AB.svg?style=for-the-badge&logo=python&logoColor=white)](#)
+[![STT](https://img.shields.io/badge/STT-faster--whisper%20(base.en)-8A2BE2.svg?style=for-the-badge)](#)
+[![LLM](https://img.shields.io/badge/LLM-Ollama%20(Llama%203.2)-FF6F00.svg?style=for-the-badge&logo=ollama&logoColor=white)](#)
+[![TTS](https://img.shields.io/badge/TTS-Kokoro%20(af__heart)-FF69B4.svg?style=for-the-badge)](#)
+[![Hardware](https://img.shields.io/badge/Hardware-Apple%20MPS%20%7C%20CUDA-blue.svg?style=for-the-badge)](#)
+[![Latency](https://img.shields.io/badge/Latency-%3C280ms-blueviolet.svg?style=for-the-badge)](#)
+[![Privacy](https://img.shields.io/badge/Privacy-100%25%20Local-success.svg?style=for-the-badge)](#)
+[![License](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](#)
+
+<p align="center">
+  <b>Jarvis</b> is an edge-native voice intelligence platform designed for fluid spoken interaction on consumer hardware.<br>
+  Operating entirely on-device, Jarvis combines neural Voice Activity Detection (VAD), CTranslate2-accelerated Speech-to-Text, local LLM orchestration with live web tools, sentence-streaming Kokoro TTS, and an audio-reactive desktop orb widget.
+</p>
+
+[Quick Start](#-quick-start-in-3-steps) •
+[Architecture](#-system-architecture--concurrency-pipeline) •
+[Latency Breakdown](#-subsystem-latency--component-specs) •
+[Core Features](#-core-features--highlights) •
+[Live Tools](#-real-time-web--tool-integration) •
+[Acoustic Lock & Echo DSP](#-audio-engineering--echo-cancellation) •
+[Desktop Orb UI](#-floating-desktop-orb-ui) •
+[CLI & Flags](#-cli-usage--configuration-options) •
+[Codebase Map](#-codebase-architecture--file-map) •
+[Docker](#-docker--container-deployment) •
+[Troubleshooting](#-troubleshooting--faq)
 
 ---
+
+</div>
 
 ## ⚡ Quick Start in 3 Steps
 
@@ -20,18 +43,23 @@
 
 #### macOS (Homebrew)
 ```bash
+# Install audio engine backends
 brew install portaudio espeak-ng
+
+# Install Python dependencies
 pip install -r requirements.txt
 ```
 
 #### Linux (Debian / Ubuntu / Pop!_OS)
 ```bash
+# Install ALSA and PortAudio headers
 sudo apt-get update && sudo apt-get install -y \
     portaudio19-dev \
     alsa-utils \
     libasound2-dev \
     espeak-ng
 
+# Install Python dependencies
 pip install -r requirements.txt
 ```
 
@@ -50,7 +78,7 @@ python main.py
 
 ## 📐 System Architecture & Concurrency Pipeline
 
-Jarvis uses an asynchronous, multi-threaded event-driven pipeline designed to minimize end-to-end latency while eliminating acoustic feedback loops and speaker self-transcription.
+Jarvis uses an asynchronous, multi-threaded event-driven architecture designed to minimize end-to-end latency while preventing acoustic feedback loops and speaker self-transcription.
 
 ```mermaid
 flowchart TB
@@ -58,8 +86,8 @@ flowchart TB
         direction TB
         MainThread["🧵 Main GUI Thread\n(Tkinter root loop, Cocoa UI, Signal Handlers)"]
         AsyncThread["🧵 Asyncio Event Loop Daemon\n(Workers, Queues, Signal Dispatcher)"]
-        MicThread["🧵 PortAudio Mic Callback\n(Chunk Producer @ 16kHz float32)"]
-        SpeakerThread["🧵 PortAudio Speaker Callback\n(Audio Consumer @ 24kHz float32)"]
+        MicThread["🧵 SoundDevice Mic Stream\n(16kHz float32 non-blocking chunk producer)"]
+        SpeakerThread["🧵 SoundDevice Speaker Stream\n(24kHz float32 audio consumer & RMS calculator)"]
         TTSWorkerThread["🧵 Kokoro Synthesis Thread\n(PyTorch MPS/CUDA Generator)"]
     end
 
@@ -90,17 +118,17 @@ flowchart TB
 
 ## ⏱️ Subsystem Latency & Component Specs
 
-Through overlapping stream execution, Jarvis initiates voice synthesis before the LLM finishes generating the full response:
+Through overlapping stream execution, Jarvis initiates voice synthesis before the LLM finishes generating the complete response:
 
 | Pipeline Stage | Engine / Model | Hardware Target | Execution Strategy | Latency |
 | :--- | :--- | :--- | :--- | :--- |
-| **Microphone Capture** | PyAudio / PortAudio | Host CPU | 32ms audio frames (512 samples @ 16kHz) | `32 ms` |
+| **Microphone Capture** | `sounddevice` / PortAudio | Host CPU | 32ms audio frames (512 samples @ 16kHz) | `32 ms` |
 | **VAD Endpointing** | Silero VAD v4 | PyTorch (CPU) | Chunk probability scoring; `0.35s` silence decay | `< 5 ms` |
 | **Speech-to-Text** | `faster-whisper` (`base.en`) | CTranslate2 | Greedy decoding, `vad_filter=False` | `60 - 90 ms` |
 | **LLM First-Token** | Ollama (`llama3.2:3b`) | Apple MPS / CUDA | `temperature=0.0`, `num_ctx=1024` | `40 - 70 ms` |
 | **Sentence Chunking** | Python regex stream | Host CPU | Punctuation boundary splitting (`.`, `!`, `?`, `\n`) | `< 1 ms` |
 | **TTS Synthesis** | Kokoro TTS (`af_heart`) | PyTorch MPS / CUDA | Sentence-level streaming synthesis | `50 - 80 ms` |
-| **Audio Playback** | PyAudio Callback Stream | Host CPU | 24kHz float32 non-blocking queue | `< 5 ms` |
+| **Audio Playback** | `sounddevice` Output Stream | Host CPU | 24kHz float32 non-blocking queue | `< 5 ms` |
 | **Cumulative Total** | **End-to-End Voice Loop** | **Hardware Accelerated** | **First audible spoken syllable** | **~200 - 280 ms** |
 
 ---
@@ -111,6 +139,7 @@ Through overlapping stream execution, Jarvis initiates voice synthesis before th
 - 🔮 **Floating Siri-Like Desktop Orb**: Frameless, borderless desktop avatar with smooth breathing, listening, thinking, and speaking animations driven by real-time voice amplitude.
 - 🔒 **100% Private & Edge-First**: Audio capture, VAD, transcription, LLM generation, and voice synthesis run entirely on local silicon. No voice data ever leaves your machine.
 - 🔄 **Smart Barge-In Interruption**: Talk over the assistant mid-response. Built-in RMS volume gating automatically cuts off TTS playback when user speech is detected.
+- ⌨️ **Console Interruption**: Press `[Enter]` in the terminal anytime during speech to trigger an instant manual interrupt.
 - 🛡️ **Adaptive Echo & Loop Suppression**: Dynamic decay cooldown (`0.35s`) and amplitude gating prevent the assistant from transcribing its own output through microphone spillover.
 - 🌐 **Deterministic Tool Calling**: Zero-hallucination tool invocation with strict keyword & regex matching for real-time stock prices, live search, breaking news, weather, and system utilities.
 - 🍏 **Hardware Accelerated**: Native Apple Silicon Metal Performance Shaders (`MPS`) and NVIDIA `CUDA` acceleration auto-detected on boot.
@@ -169,7 +198,7 @@ The desktop widget in `ui_engine.py` provides visual state feedback:
 | **Speaking** | Dynamic electric blue orb | Real-time expansion & contraction scaled to TTS audio RMS amplitude |
 
 ### macOS Cocoa Transparency Architecture
-Standard Tkinter windows on macOS create alpha compositing artifacts against transparent desktop windows. Jarvis overcomes this by rendering a dynamic canvas background oval (`canvas.create_oval`) that tracks the avatar's exact coordinates and scale, ensuring smooth anti-aliased edges.
+Standard Tkinter windows on macOS create alpha compositing artifacts against transparent desktop windows. Jarvis overcomes this by rendering a dynamic canvas background oval (`canvas.create_oval`) that tracks the avatar's exact coordinates and scale, ensuring smooth anti-aliased edges. Click and drag the orb to move it anywhere on your desktop.
 
 ---
 
@@ -211,16 +240,17 @@ python -m unittest test_jarvis.py
 
 | File | Purpose | Subsystem Layer |
 | :--- | :--- | :--- |
-| [main.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/main.py) | Application entry point, thread coordinator, signal handling | Core Orchestrator |
-| [audio_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/audio_engine.py) | PyAudio mic streams, Silero VAD endpointing, and adaptive echo gating | DSP & Audio In |
-| [stt_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/stt_engine.py) | Async Speech-to-Text transcription powered by `faster-whisper` | Speech Recognition |
-| [llm_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/llm_engine.py) | Ollama Llama 3.2 integration, memory buffer, and deterministic tool router | Language & Reasoning |
-| [tts_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/tts_engine.py) | Sentence-streaming speech synthesis using Kokoro TTS (MPS/CUDA) | Voice Synthesis |
-| [ui_engine.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/ui_engine.py) | Floating Tkinter desktop orb widget with dynamic state animations | User Interface |
-| [test_jarvis.py](file:///Users/saikrishnaallam/Desktop/jarvis_ai/test_jarvis.py) | Unit test suite for deterministic tool routing and memory management | Verification |
-| [Dockerfile](file:///Users/saikrishnaallam/Desktop/jarvis_ai/Dockerfile) | Production Linux container configuration with host ALSA device access | Deployment |
-| [requirements.txt](file:///Users/saikrishnaallam/Desktop/jarvis_ai/requirements.txt) | Pinned Python package dependencies | Environment |
-| [.gitignore](file:///Users/saikrishnaallam/Desktop/jarvis_ai/.gitignore) | Git ignore patterns for Python bytecode, virtual environments, and OS files | Project Hygiene |
+| [main.py](main.py) | Application entry point, thread coordinator, signal handling | Core Orchestrator |
+| [audio_engine.py](audio_engine.py) | SoundDevice mic capture, Silero VAD endpointing, and adaptive echo gating | DSP & Audio In |
+| [stt_engine.py](stt_engine.py) | Async Speech-to-Text transcription powered by `faster-whisper` | Speech Recognition |
+| [llm_engine.py](llm_engine.py) | Ollama Llama 3.2 integration, memory buffer, and deterministic tool router | Language & Reasoning |
+| [tts_engine.py](tts_engine.py) | Sentence-streaming speech synthesis using Kokoro TTS (MPS/CUDA) | Voice Synthesis |
+| [ui_engine.py](ui_engine.py) | Floating Tkinter desktop orb widget with dynamic state animations | User Interface |
+| [avatar.png](avatar.png) | Desktop orb graphical asset for real-time dynamic scaling | UI Asset |
+| [test_jarvis.py](test_jarvis.py) | Unit test suite for deterministic tool routing and memory management | Verification |
+| [Dockerfile](Dockerfile) | Production Linux container configuration with host ALSA device access | Deployment |
+| [requirements.txt](requirements.txt) | Pinned Python package dependencies | Environment |
+| [.gitignore](.gitignore) | Git ignore patterns for Python bytecode, virtual environments, and OS files | Project Hygiene |
 
 ---
 
@@ -256,15 +286,16 @@ docker run -it \
 ## 🛠️ Troubleshooting & FAQ
 
 <details>
-<summary><b>1. PortAudio or PyAudio installation errors on macOS</b></summary>
+<summary><b>1. PortAudio or sounddevice installation on macOS / Linux</b></summary>
 <br>
 
-Ensure Homebrew packages are installed and environment variables point to the Homebrew include directories:
+Ensure system audio headers are installed:
+- **macOS**: `brew install portaudio espeak-ng`
+- **Linux**: `sudo apt-get install -y portaudio19-dev alsa-utils libasound2-dev espeak-ng`
+
+Then install Python packages:
 ```bash
-brew install portaudio
-export CFLAGS="-I$(brew --prefix portaudio)/include"
-export LDFLAGS="-L$(brew --prefix portaudio)/lib"
-pip install pyaudio
+pip install -r requirements.txt
 ```
 </details>
 
@@ -301,6 +332,7 @@ Switch to `smart` barge-in mode (default) or `headphones` mode if using a headse
 ```bash
 python main.py --barge-in smart
 ```
+You can also press `[Enter]` in the console to immediately cut off speech playback.
 </details>
 
 ---
